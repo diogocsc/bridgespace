@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Invite Parties – {{ mediation.title }} – BridgeSpace{% endblock %}
+
+{% block head %}
+<style>
+  .invite-wrap { max-width: 620px; margin: 0 auto; }
+  .invite-wrap h1 {
+    font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: .3rem;
+  }
+  .tag-input-wrap {
+    display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+    padding: .5rem .8rem; border: 1.5px solid var(--border); border-radius: 8px;
+    background: var(--cream); cursor: text; min-height: 48px; transition: border-color .2s;
+  }
+  .tag-input-wrap:focus-within {
+    border-color: var(--sage); box-shadow: 0 0 0 3px rgba(124,158,143,.15);
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: var(--sage-light); color: var(--sage-dark);
+    padding: .2rem .6rem; border-radius: 20px; font-size: .82rem; font-weight: 500;
+  }
+  .tag.phone { background: var(--accent-light); color: var(--accent); }
+  .tag button {
+    background: none; border: none; cursor: pointer;
+    color: inherit; font-size: .9rem; line-height: 1; padding: 0;
+  }
+  .tag-real-input {
+    border: none; outline: none; background: transparent;
+    font-family: inherit; font-size: .92rem; flex: 1; min-width: 180px;
+  }
+  .section-head {
+    font-size: .8rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); margin: 1.5rem 0 .7rem;
+  }
+  .participant-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .7rem 1rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--warm-white); margin-bottom: .5rem;
+  }
+  .participant-row .p-name { font-weight: 500; font-size: .9rem; }
+  .participant-row .p-email { font-size: .78rem; color: var(--muted); }
+  .invite-link-box {
+    background: #F0F7F4; border: 1px solid var(--sage-light);
+    border-radius: 8px; padding: 1rem 1.2rem; margin-top: 1.5rem;
+  }
+  .invite-link-box label {
+    font-size: .8rem; font-weight: 600; color: var(--sage-dark);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .link-row { display: flex; gap: .6rem; margin-top: .5rem; align-items: center; }
+  .link-row input { flex: 1; font-size: .82rem; background: var(--warm-white); }
+  .pending-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .6rem 1rem; border-radius: 8px; border: 1px dashed var(--border);
+    margin-bottom: .4rem; font-size: .88rem;
+  }
+  .s-badge { font-size: .72rem; padding: .15rem .5rem; border-radius: 20px; }
+  .s-pending  { background: #FFF8E8; color: #B8860B; }
+  .s-accepted { background: #E8F5EE; color: var(--success); }
+  .s-declined { background: #FDE8E8; color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invite-wrap">
+
+  <a href="{{ url_for('mediation.view_mediation', mediation_id=mediation.id) }}"
+     style="font-size:.85rem;color:var(--muted);">&#8592; Back to mediation</a>
+
+  <h1 style="margin-top:1rem;">Invite Parties</h1>
+  <p style="color:var(--muted);font-size:.9rem;margin-bottom:2rem;">
+    <strong>{{ mediation.title }}</strong> &middot;
+    <span class="badge badge-{{ mediation.mode }}">{{ mediation.mode|capitalize }}</span>
+    <span class="badge badge-{{ mediation.status }}">{{ mediation.status|capitalize }}</span>
+  </p>
+
+  <!-- Invite form -->
+  <div class="card">
+    <form method="POST"
+          action="{{ url_for('mediation.send_invites', mediation_id=mediation.id) }}"
+          id="invite-form">
+
+      <div class="form-group">
+        <label>Email addresses or phone numbers</label>
+        <div class="tag-input-wrap" id="tag-wrap"
+             onclick="document.getElementById('tag-input').focus()">
+          <input class="tag-real-input" id="tag-input"
+                 placeholder="Type email or phone, then press Enter or comma…"
+                 onkeydown="handleTagKey(event)"
+                 onpaste="handlePaste(event)">
+        </div>
+        <!-- Serialised contact list submitted to server -->
+        <input type="hidden" name="invitees" id="invitees-hidden">
+        <p class="text-sm text-muted mt-1">
+          Email invitations are dispatched immediately.
+          Phone numbers receive an SMS with the join link.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label>Personal message <span style="font-weight:400;">(optional)</span></label>
+        <textarea name="personal_message" rows="2"
+          placeholder="Add a brief note to accompany the invitation…"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-accent" id="send-btn"
+              disabled style="justify-content:center;">
+        Send invitations
+      </button>
+    </form>
+  </div>
+
+  <!-- Shareable link -->
+  <div class="invite-link-box">
+    <label>Or share a direct join link</label>
+    <div class="link-row">
+      <input type="text" id="share-link" readonly
+             value="{{ url_for('mediation.join_via_invite',
+                               token=mediation.invite_token, _external=True) }}">
+      <button class="btn btn-outline btn-sm" onclick="copyLink()">Copy link</button>
+    </div>
+    <p class="text-sm text-muted mt-1">
+      Anyone with this link can request to join. Share only with intended parties.
+    </p>
+  </div>
+
+  <!-- Existing participants -->
+  {% set participants = mediation.participants.filter_by(is_active=True).all() %}
+  {% if participants %}
+  <div>
+    <p class="section-head">Current participants ({{ participants|length }})</p>
+    {% for p in participants %}
+    <div class="participant-row">
+      <div>
+        <div class="p-name">{{ p.user.display_name }}</div>
+        <div class="p-email">{{ p.user.email }}</div>
+      </div>
+      <span class="badge badge-{{ p.role }}">{{ p.role|capitalize }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Sent invitations -->
+  {% set invitations = mediation.invitations.all() %}
+    {% if invitations %}
+    <div>
+      <p class="section-head">Sent invitations</p>
+      {% for inv in invitations %}
+      <div class="pending-row">
+        <span>
+          {{ inv.contact }}
+          <span class="badge"
+            style="background:{% if inv.contact_type=='phone' %}var(--accent-light)
+                               {% else %}var(--sage-light){% endif %};
+                   color:{% if inv.contact_type=='phone' %}var(--accent)
+                          {% else %}var(--sage-dark){% endif %};">
+            {{ inv.contact_type }}
+          </span>
+        </span>
+
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span class="s-badge s-{{ inv.status }}">{{ inv.status|capitalize }}</span>
+
+          {% if inv.status == 'pending' %}
+            <!-- Resend -->
+            <form method="POST"
+                  action="{{ url_for('mediation.resend_invite',
+                                     mediation_id=mediation.id,
+                                     invitation_id=inv.id) }}"
+                  style="margin:0;">
+              <button type="submit" class="btn btn-outline btn-sm"
+                      title="Resend notification">
+                ↺ Resend
+              </button>
+            </form>
+
+            <!-- Revoke (creator only) -->
+            {% if mediation.creator_id == current_user.id %}
+            <form method="POST"
+                  action="{{ url_for('mediation.revoke_invite',
+                                     mediation_id=mediation.id,
+                                     invitation_id=inv.id) }}"
+                  style="margin:0;"
+                  onsubmit="return confirm('Revoke invitation to {{ inv.contact }}?')">
+              <button type="submit" class="btn btn-sm"
+                      style="background:#FDE8E8;color:var(--danger);
+                             border:1px solid #F5C6C6;">
+                ✕ Revoke
+              </button>
+            </form>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const tags = [];
+
+function renderTags() {
+  const wrap = document.getElementById('tag-wrap');
+  wrap.querySelectorAll('.tag').forEach(t => t.remove());
+  const inp = document.getElementById('tag-input');
+  tags.forEach((tag, i) => {
+    const el = document.createElement('span');
+    el.className = 'tag' + (/^[+\d]/.test(tag) ? ' phone' : '');
+    el.innerHTML = tag +
+      ` <button type="button" onclick="removeTag(${i})" aria-label="Remove">&times;</button>`;
+    wrap.insertBefore(el, inp);
+  });
+  document.getElementById('invitees-hidden').value = tags.join(',');
+  document.getElementById('send-btn').disabled = (tags.length === 0);
+}
+
+function addTag(val) {
+  val = val.trim();
+  if (!val) return;
+  const isEmail = /^[^@]+@[^@]+\.[^@]+$/.test(val);
+  const isPhone = /^[+\d][\d\s\-(). ]{6,}$/.test(val);
+  if (!isEmail && !isPhone) {
+    alert(`"${val}" doesn't look like a valid email or phone number.`);
+    return;
+  }
+  if (!tags.includes(val)) { tags.push(val); renderTags(); }
+}
+
+function removeTag(i) { tags.splice(i, 1); renderTags(); }
+
+function handleTagKey(e) {
+  const inp = e.target;
+  if (['Enter', 'Tab', ','].includes(e.key)) {
+    e.preventDefault();
+    addTag(inp.value);
+    inp.value = '';
+  } else if (e.key === 'Backspace' && inp.value === '' && tags.length) {
+    tags.pop(); renderTags();
+  }
+}
+
+function handlePaste(e) {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  text.split(/[,\n\s]+/).forEach(v => v && addTag(v));
+}
+
+document.getElementById('invite-form').addEventListener('submit', e => {
+  const inp = document.getElementById('tag-input').value.trim();
+  if (inp) addTag(inp);
+  if (tags.length === 0) {
+    e.preventDefault();
+    alert('Please add at least one email or phone number.');
+  }
+});
+
+function copyLink() {
+  const el = document.getElementById('share-link');
+  el.select();
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = document.querySelector('.link-row button');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy link', 2000);
+  });
+}
+</script>
+{% endblock %}

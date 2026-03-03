@@ -1,0 +1,10 @@
+flask>=3.0
+flask-sqlalchemy>=3.1
+flask-login>=0.6
+flask-bcrypt>=1.0
+flask-socketio>=5.3
+flask-mail>=0.10
+anthropic>=0.25
+python-dotenv>=1.0
+eventlet>=0.35
+requests

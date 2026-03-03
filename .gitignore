@@ -1,0 +1,85 @@
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+wheels/
+pip-wheel-metadata/
+
+# ── Virtual environments ───────────────────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ── Environment & secrets — NEVER commit these ────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Flask / SQLite database ────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+instance/
+bridgespace.db
+
+# ── Uploaded files (user content) ─────────────────────────────────────────
+uploads/
+static/uploads/
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+*.log
+logs/
+log/
+
+# ── Testing & coverage ────────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+nosetests.xml
+test-results/
+
+# ── IDE & editor folders ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.project
+.pydevproject
+
+# ── OS generated files ────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Compiled / cached assets ──────────────────────────────────────────────
+*.pyc
+*.pyo
+*.mo
+*.pot
+
+# ── Celery (if added later for async tasks) ───────────────────────────────
+celerybeat-schedule
+celerybeat.pid
+
+# ── Docker (if added later) ───────────────────────────────────────────────
+.dockerignore
+docker-compose.override.yml

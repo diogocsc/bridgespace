@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Register – BridgeSpace{% endblock %}
+
+{% block head %}
+<style>
+  .auth-wrap { max-width: 480px; margin: 0 auto; }
+  .auth-hero { text-align: center; margin-bottom: 2rem; }
+  .auth-hero h1 { font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: .4rem; }
+  .auth-hero p { color: var(--muted); font-size: .95rem; }
+  .invite-banner {
+    display: flex; align-items: flex-start; gap: .6rem;
+    background: #FFF8EE; border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: .8rem 1rem; margin-bottom: 1.2rem;
+    font-size: .88rem; color: var(--accent); line-height: 1.5;
+  }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 3rem; }
+  .pw-toggle {
+    position: absolute; right: .8rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: .85rem; padding: 0; line-height: 1;
+  }
+  .strength-bar { height: 4px; border-radius: 2px; margin-top: .4rem;
+    background: var(--border); overflow: hidden; }
+  .strength-fill { height: 100%; border-radius: 2px; width: 0%; transition: width .3s, background .3s; }
+  .strength-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+  .lang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: .4rem; }
+  .lang-card { border: 1.5px solid var(--border); border-radius: 8px; padding: .45rem .7rem;
+    cursor: pointer; font-size: .84rem; text-align: center; transition: all .15s;
+    background: var(--cream); user-select: none; }
+  .lang-card:hover { border-color: var(--sage); background: #F0F7F4; }
+  .lang-card.selected { border-color: var(--sage-dark); background: #F0F7F4;
+    font-weight: 600; color: var(--sage-dark); }
+  .lang-card input { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-hero">
+    <h1>Join BridgeSpace</h1>
+    <p>Create your secure, confidential account.</p>
+  </div>
+
+  {% if next %}
+  <div class="invite-banner">
+    <span style="font-size:1.1rem;flex-shrink:0;">&#9993;</span>
+    <span>You have a pending mediation invitation.
+    Create your account and you will be taken there automatically.</span>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form method="POST"
+          action="{{ url_for('auth.register', next=next) if next else url_for('auth.register') }}"
+          novalidate>
+
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+      <div class="form-group">
+        <label for="display_name">Display name</label>
+        <input type="text" id="display_name" name="display_name"
+               placeholder="How others will see you"
+               value="{{ form_data.get('display_name','') }}" required autofocus>
+      </div>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username"
+               placeholder="Unique handle (min. 3 characters)"
+               value="{{ form_data.get('username','') }}" required minlength="3">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email"
+               placeholder="you@example.com"
+               value="{{ form_data.get('email','') }}" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password <span style="font-weight:400;">(min. 8 characters)</span></label>
+        <div class="pw-wrap">
+          <input type="password" id="password" name="password"
+                 placeholder="At least 8 characters" required minlength="8"
+                 oninput="checkStrength(this.value)">
+          <button type="button" class="pw-toggle" onclick="togglePw('password','eye1')"
+                  aria-label="Show/hide password"><span id="eye1">&#128065;</span></button>
+        </div>
+        <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        <div class="strength-label" id="strength-label"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirm_password">Confirm password</label>
+        <div class="pw-wrap">
+          <input type="password" id="confirm_password" name="confirm_password"
+                 placeholder="Repeat your password" required>
+          <button type="button" class="pw-toggle" onclick="togglePw('confirm_password','eye2')"
+                  aria-label="Show/hide password"><span id="eye2">&#128065;</span></button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Preferred language</label>
+        <p class="text-sm text-muted" style="margin-bottom:.6rem;">
+          Posts will be translated into this language automatically.
+        </p>
+        <div class="lang-grid">
+          {% for code, name in languages.items() %}
+          <label class="lang-card {% if form_data.get('preferred_language','en') == code %}selected{% endif %}"
+                 id="lang-label-{{ code }}">
+            <input type="radio" name="preferred_language" value="{{ code }}"
+                   {% if form_data.get('preferred_language','en') == code %}checked{% endif %}
+                   onchange="selectLang('{{ code }}')">
+            {{ name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary"
+              style="width:100%;justify-content:center;margin-top:.5rem;">
+        Create account
+      </button>
+    </form>
+
+    <p class="text-sm text-muted mt-2" style="text-align:center;">
+      Already have an account?
+      <a href="{{ url_for('auth.login', next=next) if next else url_for('auth.login') }}"
+         style="font-weight:500;">Log in</a>
+    </p>
+  </div>
+
+  <p class="text-sm text-muted mt-2" style="text-align:center;padding:0 1rem;">
+    &#128274; All data is confidential and never shared without your explicit consent.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw(fieldId, eyeId) {
+  const inp = document.getElementById(fieldId);
+  const eye = document.getElementById(eyeId);
+  if (inp.type === 'password') { inp.type = 'text';     eye.innerHTML = '&#128584;'; }
+  else                         { inp.type = 'password'; eye.innerHTML = '&#128065;'; }
+}
+
+function selectLang(code) {
+  document.querySelectorAll('.lang-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('lang-label-' + code).classList.add('selected');
+}
+
+function checkStrength(pw) {
+  const fill  = document.getElementById('strength-fill');
+  const label = document.getElementById('strength-label');
+  let score = 0;
+  if (pw.length >= 8)           score++;
+  if (pw.length >= 12)          score++;
+  if (/[A-Z]/.test(pw))         score++;
+  if (/[0-9]/.test(pw))         score++;
+  if (/[^A-Za-z0-9]/.test(pw))  score++;
+  const levels = [
+    { pct:'0%',   color:'var(--border)',    text:'' },
+    { pct:'25%',  color:'var(--danger)',    text:'Weak' },
+    { pct:'50%',  color:'var(--accent)',    text:'Fair' },
+    { pct:'75%',  color:'var(--sage-light)',text:'Good' },
+    { pct:'90%',  color:'var(--sage)',      text:'Strong' },
+    { pct:'100%', color:'var(--sage-dark)', text:'Very strong' },
+  ];
+  const lvl = levels[Math.min(score, levels.length - 1)];
+  fill.style.width      = lvl.pct;
+  fill.style.background = lvl.color;
+  label.textContent     = lvl.text;
+  label.style.color     = lvl.color;
+}
+
+document.querySelector('form').addEventListener('submit', function(e) {
+  const pw  = document.getElementById('password').value;
+  const cpw = document.getElementById('confirm_password').value;
+  if (pw && cpw && pw !== cpw) {
+    e.preventDefault();
+    document.getElementById('confirm_password')
+      .setCustomValidity('Passwords do not match.');
+    document.getElementById('confirm_password').reportValidity();
+  } else {
+    document.getElementById('confirm_password').setCustomValidity('');
+  }
+});
+</script>
+{% endblock %}

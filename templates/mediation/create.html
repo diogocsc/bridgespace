@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}New Mediation – BridgeSpace{% endblock %}
+{% block content %}
+<div style="max-width:600px; margin:0 auto;">
+  <h1 style="font-family:'Playfair Display',serif; font-size:1.8rem; margin-bottom:0.4rem;">
+    Start a New Mediation
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:2rem;">
+    You will become the requesting party. All content is strictly confidential.
+  </p>
+  <div class="card">
+    <form method="POST" action="{{ url_for('mediation.create_mediation') }}">
+      <div class="form-group">
+        <label>Mediation Title *</label>
+        <input type="text" name="title" placeholder="e.g. Workplace dispute — Project Alpha" required>
+      </div>
+      <div class="form-group">
+        <label>Brief Description (optional)</label>
+        <textarea name="description" placeholder="Summarise the nature of the dispute…" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Mediation Mode *</label>
+        <select name="mode" id="mode-select" onchange="updateModeHint()">
+          <option value="async">Asynchronous — Parties post at their own pace</option>
+          <option value="live">Live — Real-time session with all parties present</option>
+        </select>
+        <p class="text-sm text-muted mt-1" id="mode-hint">
+          Ideal for parties in different time zones or who need time to reflect.
+        </p>
+      </div>
+      <div class="form-group">
+        <label>Start Date & Time (optional — leave blank to start immediately)</label>
+        <input type="datetime-local" name="start_date">
+      </div>
+      <div class="form-group">
+        <label>Invite Parties (emails or phone numbers, comma-separated)</label>
+        <input type="text" name="invitees"
+               placeholder="alice@example.com, +351912345678, bob@example.com">
+        <p class="text-sm text-muted mt-1">
+          Invitations will be sent by email or SMS. Invitees must register to participate.
+        </p>
+      </div>
+      <button type="submit" class="btn btn-accent" style="width:100%; justify-content:center;">
+        Create Mediation →
+      </button>
+    </form>
+  </div>
+</div>
+<script>
+function updateModeHint() {
+  const mode = document.getElementById('mode-select').value;
+  const hint = document.getElementById('mode-hint');
+  hint.textContent = mode === 'live'
+    ? 'All parties need to be online simultaneously. Best for quick resolution.'
+    : 'Ideal for parties in different time zones or who need time to reflect.';
+}
+</script>
+{% endblock %}

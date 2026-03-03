@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block title %}{{ mediation.title }} – BridgeSpace{% endblock %}
+
+{% block head %}
+<style>
+  .mediation-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 2rem;
+  }
+  .mediation-header h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; }
+  .posts-feed { display: flex; flex-direction: column; gap: 1.2rem; margin-bottom: 2rem; }
+  .post-card {
+    background: var(--warm-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem 1.5rem;
+    position: relative; animation: fadeIn 0.3s ease;
+  }
+  .post-card.own-post { border-left: 3px solid var(--sage); }
+  .post-card.other-post { border-left: 3px solid var(--accent-light); }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+  .post-meta { display: flex; gap: 0.8rem; align-items: center; margin-bottom: 0.6rem; }
+  .post-author { font-weight: 600; font-size: 0.9rem; }
+  .post-time { font-size: 0.78rem; color: var(--muted); }
+  .post-version-badge { font-size: 0.72rem; padding: 0.15rem 0.5rem;
+                        border-radius: 20px; background: var(--sage-light); color: var(--sage-dark); }
+  .post-content { font-size: 0.95rem; line-height: 1.7; }
+  .post-translation { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--border); }
+  .translation-toggle { font-size: 0.8rem; color: var(--sage-dark); cursor: pointer;
+                         text-decoration: underline; background: none; border: none; font-family: inherit; }
+  .draft-area {
+    background: var(--warm-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow);
+    position: sticky; bottom: 1.5rem;
+  }
+  .draft-area h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 1rem; }
+  .draft-actions { display: flex; gap: 0.8rem; margin-top: 1rem; flex-wrap: wrap; }
+  .voice-btn { display: flex; align-items: center; gap: 0.4rem; }
+  .voice-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .ai-suggestion {
+    margin-top: 1rem; padding: 1rem; background: #F0F7F4;
+    border-left: 3px solid var(--sage); border-radius: 8px;
+    font-size: 0.92rem; line-height: 1.7; display: none;
+  }
+  .ai-suggestion.visible { display: block; animation: fadeIn 0.3s ease; }
+  .ai-label { font-size: 0.78rem; font-weight: 600; color: var(--sage-dark);
+               text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+  .ai-actions { display: flex; gap: 0.6rem; margin-top: 0.8rem; }
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(44,44,44,0.5);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--warm-white); border-radius: var(--radius); padding: 2rem;
+            max-width: 460px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal h3 { font-family: 'Playfair Display', serif; margin-bottom: 1rem; }
+  .modal p { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+  .modal-actions { display: flex; gap: 0.8rem; justify-content: flex-end; }
+  .char-count { font-size: 0.78rem; color: var(--muted); text-align: right; margin-top: 0.3rem; }
+  #typing-indicator { font-size: 0.8rem; color: var(--muted); font-style: italic; min-height: 1.2em; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mediation-header">
+  <div>
+    <h1>{{ mediation.title }}</h1>
+    <div style="display:flex; gap:0.6rem; margin-top:0.5rem; align-items:center;">
+      <span class="badge badge-{{ mediation.mode }}">{{ mediation.mode|capitalize }}</span>
+      <span class="badge badge-{{ mediation.status }}">{{ mediation.status|capitalize }}</span>
+      <span class="text-sm text-muted">Started {{ mediation.created_at.strftime('%b %d, %Y') }}</span>
+    </div>
+    {% if mediation.description %}
+      <p style="margin-top:0.7rem; color:var(--muted); max-width:600px;">{{ mediation.description }}</p>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:0.6rem;align-items:center;">
+  {% if mediation.status != 'closed' %}
+  <a href="{{ url_for('mediation.invite_page', mediation_id=mediation.id) }}"
+     class="btn btn-outline btn-sm">
+    + Invite Parties
+  </a>
+  {% endif %}
+  <a href="{{ url_for('mediation.dashboard') }}" class="btn btn-outline btn-sm">← Dashboard</a>
+
+</div>
+
+</div>
+
+<div id="typing-indicator"></div>
+
+<!-- POSTS FEED -->
+<div class="posts-feed" id="posts-feed">
+{% for post in posts %}
+  {% set is_own = (post.author_id == current_user.id) %}
+  <div class="post-card {{ 'own-post' if is_own else 'other-post' }}" id="post-{{ post.id }}">
+    <div class="post-meta">
+      <span class="post-author">{{ post.author.display_name }}</span>
+      <span class="post-time">{{ post.created_at.strftime('%b %d · %H:%M') }}</span>
+      {% if post.submitted_version == 'reformulated' %}
+        <span class="post-version-badge">✦ AI-refined</span>
+      {% endif %}
+      {% if post.input_method == 'voice' %}
+        <span class="post-version-badge" style="background:#FFF0E8;color:var(--accent);">🎙 Voice</span>
+      {% endif %}
+    </div>
+
+    <!-- Translated version first (if different language) -->
+    <div class="post-content" id="translated-{{ post.id }}">
+      {% set translation = post.get_translation(user_lang) %}
+      {% if translation and not is_own %}
+        {{ translation }}
+      {% else %}
+        {{ post.get_display_content() }}
+      {% endif %}
+    </div>
+
+    <!-- Original toggle -->
+    {% if not is_own and post.get_translation(user_lang) %}
+    <div class="post-translation">
+      <button class="translation-toggle" onclick="toggleOriginal({{ post.id }})">
+        Show original text ↓
+      </button>
+      <div id="original-{{ post.id }}" style="display:none; margin-top:0.5rem;
+           font-size:0.9rem; color:var(--muted); font-style:italic;">
+        {{ post.get_display_content() }}
+      </div>
+    </div>
+    {% elif not is_own %}
+    <div class="post-translation">
+      <button class="translation-toggle" onclick="loadTranslation({{ post.id }}, '{{ user_lang }}')">
+        Translate to your language ↓
+      </button>
+      <div id="original-{{ post.id }}" style="display:none; margin-top:0.5rem; font-size:0.9rem; color:var(--muted);">
+        {{ post.get_display_content() }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card" style="text-align:center; color:var(--muted); padding:3rem;">
+    <p style="font-size:1.1rem;">No posts yet.</p>
+    <p class="text-sm mt-1">Be the first to share your perspective below.</p>
+  </div>
+{% endfor %}
+</div>
+
+<!-- DRAFT AREA -->
+{% if mediation.status != 'closed' %}
+<div class="draft-area">
+  <h3>Your Post</h3>
+  <textarea id="draft-text" placeholder="Write your message here, or use the microphone button to dictate..." rows="5"
+            oninput="updateCharCount()"></textarea>
+  <div class="char-count"><span id="char-count">0</span> characters</div>
+
+  <!-- AI Suggestion Panel -->
+  <div class="ai-suggestion" id="ai-suggestion">
+    <div class="ai-label">✦ AI Suggestion — Reformulated for constructive dialogue</div>
+    <div id="ai-suggestion-text"></div>
+    <div class="ai-actions">
+      <button class="btn btn-primary btn-sm" onclick="acceptAISuggestion()">Use this version</button>
+      <button class="btn btn-outline btn-sm" onclick="dismissAISuggestion()">Keep my own</button>
+    </div>
+  </div>
+
+  <div class="draft-actions">
+    <button class="btn btn-outline voice-btn" id="voice-btn" onclick="toggleVoice()">
+      🎙 Dictate
+    </button>
+    <button class="btn btn-outline" id="ai-btn" onclick="requestAIFeedback()">
+      ✦ Ask AI Feedback
+    </button>
+    <button class="btn btn-accent" onclick="openSubmitConfirm()" style="margin-left:auto;">
+      Submit Post →
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- CONFIRM SUBMIT MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <h3>Confirm Submission</h3>
+    <p>Once submitted, your post will be visible to all participants in this mediation. Are you ready?</p>
+    <div id="submit-version-info" style="font-size:0.88rem; color:var(--muted); margin-bottom:1rem;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Review again</button>
+      <button class="btn btn-accent btn-sm" id="confirm-submit-btn" onclick="finalSubmit()">Yes, submit</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MEDIATION_ID = {{ mediation.id }};
+const USER_LANG = "{{ user_lang }}";
+const socket = io();
+let useAIVersion = false;
+let aiSuggestionText = '';
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+
+// SocketIO
+socket.emit('join_mediation', {mediation_id: MEDIATION_ID});
+socket.on('new_post', data => appendPost(data));
+socket.on('user_typing', data => {
+  const el = document.getElementById('typing-indicator');
+  el.textContent = data.user + ' is typing...';
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => el.textContent = '', 3000);
+});
+
+document.getElementById('draft-text')?.addEventListener('input', () => {
+  socket.emit('typing', {mediation_id: MEDIATION_ID});
+});
+
+function updateCharCount() {
+  const text = document.getElementById('draft-text').value;
+  document.getElementById('char-count').textContent = text.length;
+}
+
+// AI Feedback
+async function requestAIFeedback() {
+  const text = document.getElementById('draft-text').value.trim();
+  if (!text) { alert('Please write something first.'); return; }
+  const btn = document.getElementById('ai-btn');
+  btn.innerHTML = '<span class="spinner"></span> Analysing…';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/reformulate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text, mediation_id: MEDIATION_ID})
+    });
+    const data = await res.json();
+    if (data.reformulated) {
+      aiSuggestionText = data.reformulated;
+      document.getElementById('ai-suggestion-text').textContent = data.reformulated;
+      document.getElementById('ai-suggestion').classList.add('visible');
+    } else {
+      alert('AI feedback unavailable: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) { alert('Error contacting AI service.'); }
+  finally { btn.innerHTML = '✦ Ask AI Feedback'; btn.disabled = false; }
+}
+
+function acceptAISuggestion() {
+  document.getElementById('draft-text').value = aiSuggestionText;
+  useAIVersion = true;
+  document.getElementById('ai-suggestion').classList.remove('visible');
+  updateCharCount();
+}
+
+function dismissAISuggestion() {
+  useAIVersion = false;
+  document.getElementById('ai-suggestion').classList.remove('visible');
+}
+
+function openSubmitConfirm() {
+  const text = document.getElementById('draft-text').value.trim();
+  if (!text) { alert('Cannot submit an empty post.'); return; }
+  const info = document.getElementById('submit-version-info');
+  info.textContent = useAIVersion
+    ? '✦ You will submit the AI-reformulated version.'
+    : 'You will submit your own original text.';
+  document.getElementById('confirm-modal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('confirm-modal').classList.remove('active');
+}
+
+async function finalSubmit() {
+  const original = document.getElementById('draft-text').value.trim();
+  const btn = document.getElementById('confirm-submit-btn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  const payload = {
+    mediation_id: MEDIATION_ID,
+    original: original,
+    reformulated: useAIVersion ? aiSuggestionText : '',
+    submitted_version: useAIVersion ? 'reformulated' : 'original',
+    input_method: isRecording ? 'voice' : 'text'
+  };
+
+  try {
+    const res = await fetch('/api/post/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('draft-text').value = '';
+      useAIVersion = false; aiSuggestionText = '';
+      document.getElementById('ai-suggestion').classList.remove('visible');
+      updateCharCount();
+      closeModal();
+    } else {
+      alert('Error submitting: ' + (data.error || 'Unknown'));
+    }
+  } catch(e) { alert('Network error.'); }
+  finally { btn.innerHTML = 'Yes, submit'; btn.disabled = false; }
+}
+
+// Voice dictation (Web Speech API)
+function toggleVoice() {
+  const btn = document.getElementById('voice-btn');
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Voice dictation is not supported in your browser. Try Chrome.');
+    return;
+  }
+  if (isRecording) {
+    isRecording = false;
+    btn.classList.remove('recording');
+    btn.textContent = '🎙 Dictate';
+    if (window._recognizer) window._recognizer.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognizer = new SR();
+  recognizer.continuous = true;
+  recognizer.interimResults = true;
+  recognizer.lang = USER_LANG;
+  window._recognizer = recognizer;
+
+  recognizer.onstart = () => {
+    isRecording = true;
+    btn.classList.add('recording');
+    btn.textContent = '⏹ Stop Recording';
+  };
+  recognizer.onresult = e => {
+    let transcript = '';
+    for (let i = 0; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    document.getElementById('draft-text').value = transcript;
+    updateCharCount();
+  };
+  recognizer.onerror = () => {
+    isRecording = false;
+    btn.classList.remove('recording');
+    btn.textContent = '🎙 Dictate';
+  };
+  recognizer.onend = () => {
+    isRecording = false;
+    btn.classList.remove('recording');
+    btn.textContent = '🎙 Dictate';
+  };
+  recognizer.start();
+}
+
+// Translation
+async function loadTranslation(postId, lang) {
+  const contentEl = document.getElementById('translated-' + postId);
+  const originalEl = document.getElementById('original-' + postId);
+  const originalText = contentEl.textContent.trim();
+
+  try {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: originalText, post_id: postId, target_lang: lang})
+    });
+    const data = await res.json();
+    if (data.translation) {
+      originalEl.textContent = originalText;
+      contentEl.textContent = data.translation;
+      originalEl.style.display = 'block';
+    }
+  } catch(e) { console.error(e); }
+}
+
+function toggleOriginal(postId) {
+  const el = document.getElementById('original-' + postId);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Append real-time posts (SocketIO)
+function appendPost(data) {
+  const feed = document.getElementById('posts-feed');
+  const emptyMsg = feed.querySelector('.card');
+  if (emptyMsg) emptyMsg.remove();
+
+  const div = document.createElement('div');
+  div.className = 'post-card other-post';
+  div.id = 'post-' + data.post_id;
+  div.innerHTML = `
+    <div class="post-meta">
+      <span class="post-author">${data.author}</span>
+      <span class="post-time">Just now</span>
+    </div>
+    <div class="post-content">${data.content}</div>
+  `;
+  feed.appendChild(div);
+  div.scrollIntoView({behavior:'smooth'});
+}
+</script>
+{% endblock %}

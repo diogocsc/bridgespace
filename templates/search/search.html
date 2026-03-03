@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+{% block title %}Search Similar Cases – BridgeSpace{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Layout ── */
+  .search-page { max-width: 860px; margin: 0 auto; }
+  .search-page h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem; margin-bottom: 0.3rem;
+  }
+
+  /* ── Search panel ── */
+  .search-panel {
+    background: var(--warm-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    box-shadow: var(--shadow); margin-bottom: 1.5rem;
+  }
+  .search-textarea {
+    width: 100%; padding: 0.9rem 1rem;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 0.95rem;
+    background: var(--cream); color: var(--charcoal);
+    resize: vertical; min-height: 110px; transition: border-color 0.2s;
+  }
+  .search-textarea:focus {
+    outline: none; border-color: var(--sage);
+    box-shadow: 0 0 0 3px rgba(124,158,143,0.15);
+  }
+  .search-filters {
+    display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 0.9rem;
+    align-items: center;
+  }
+  .search-filters select {
+    padding: 0.45rem 0.9rem; font-size: 0.85rem;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    background: var(--cream); color: var(--charcoal);
+    font-family: inherit; cursor: pointer;
+  }
+  .search-filters select:focus { outline: none; border-color: var(--sage); }
+  .tag-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .tag-pill {
+    padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.78rem;
+    border: 1.5px solid var(--border); background: var(--cream);
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .tag-pill:hover { border-color: var(--sage); color: var(--sage-dark); background: #F0F7F4; }
+  .tag-pill.active {
+    background: var(--sage-dark); color: white;
+    border-color: var(--sage-dark);
+  }
+  .search-row {
+    display: flex; gap: 0.7rem; margin-top: 1rem; align-items: flex-start;
+  }
+  .char-hint { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+
+  /* ── Privacy notice ── */
+  .privacy-banner {
+    display: flex; gap: 0.7rem; align-items: flex-start;
+    background: #F0F7F4; border-left: 3px solid var(--sage);
+    border-radius: 8px; padding: 0.8rem 1rem;
+    font-size: 0.82rem; color: var(--sage-dark); line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Results ── */
+  .results-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem;
+  }
+  .results-header h2 { font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+  .result-count { font-size: 0.85rem; color: var(--muted); }
+
+  .result-card {
+    background: var(--warm-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.3rem 1.5rem;
+    margin-bottom: 1rem; transition: box-shadow 0.2s, transform 0.2s;
+    animation: fadeUp 0.3s ease both;
+  }
+  .result-card:hover {
+    box-shadow: 0 8px 32px rgba(44,44,44,0.1);
+    transform: translateY(-2px);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-card:nth-child(2) { animation-delay: 0.05s; }
+  .result-card:nth-child(3) { animation-delay: 0.1s; }
+  .result-card:nth-child(4) { animation-delay: 0.15s; }
+  .result-card:nth-child(5) { animation-delay: 0.2s; }
+
+  .result-top {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 1rem; margin-bottom: 0.8rem;
+  }
+  .relevance-bar {
+    display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
+  }
+  .relevance-track {
+    width: 72px; height: 6px; background: var(--border);
+    border-radius: 3px; overflow: hidden;
+  }
+  .relevance-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--sage-light), var(--sage-dark));
+    transition: width 0.6s ease;
+  }
+  .relevance-label { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+
+  .result-summary { font-size: 0.93rem; line-height: 1.65; color: var(--charcoal); }
+  .result-summary strong { color: var(--sage-dark); }
+
+  .agreement-block {
+    margin-top: 1rem; background: #F0F7F4;
+    border-left: 3px solid var(--sage); border-radius: 8px;
+    overflow: hidden;
+  }
+  .agreement-toggle {
+    width: 100%; text-align: left; padding: 0.7rem 1rem;
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: 0.82rem; font-weight: 600; color: var(--sage-dark);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .agreement-toggle:hover { background: rgba(124,158,143,0.08); }
+  .agreement-content {
+    padding: 0 1rem 0.9rem; font-size: 0.88rem; line-height: 1.7;
+    color: var(--charcoal); display: none;
+  }
+  .agreement-content.open { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .result-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.9rem; }
+  .result-tag {
+    font-size: 0.72rem; padding: 0.15rem 0.55rem; border-radius: 20px;
+    background: var(--sage-light); color: var(--sage-dark); font-weight: 500;
+    cursor: pointer;
+  }
+  .result-tag:hover { background: var(--sage-dark); color: white; }
+  .result-date { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+
+  .use-as-reference {
+    margin-top: 0.9rem; padding-top: 0.9rem;
+    border-top: 1px dashed var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  }
+  .use-as-reference p {
+    font-size: 0.8rem; color: var(--muted); margin: 0; flex: 1;
+  }
+
+  /* ── States ── */
+  .search-state {
+    text-align: center; padding: 3.5rem 1rem; color: var(--muted);
+  }
+  .search-state .icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+  .search-state h3 {
+    font-family: 'Playfair Display', serif; font-size: 1.15rem;
+    color: var(--charcoal); margin-bottom: 0.4rem;
+  }
+  .search-state p { font-size: 0.88rem; }
+
+  .skeleton {
+    background: linear-gradient(90deg, #EDE9E0 25%, #F5F0E8 50%, #EDE9E0 75%);
+    background-size: 200% 100%; border-radius: 6px; animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .sk-line { height: 14px; margin-bottom: 8px; }
+  .sk-line.short { width: 40%; }
+  .sk-line.medium { width: 70%; }
+  .sk-line.long { width: 95%; }
+
+  /* ── Copied toast ── */
+  #copy-toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    background: var(--charcoal); color: white; padding: 0.6rem 1.2rem;
+    border-radius: 8px; font-size: 0.85rem; font-weight: 500;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 300;
+  }
+  #copy-toast.show { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-page">
+
+  <h1>Search Similar Cases</h1>
+  <p style="color:var(--muted);font-size:0.93rem;margin-bottom:1.5rem;">
+    Find anonymised agreements from closed mediations that resemble your situation.
+    Use them as inspiration to propose your own terms.
+  </p>
+
+  <!-- Privacy notice -->
+  <div class="privacy-banner">
+    <span style="font-size:1.1rem;flex-shrink:0;">🔒</span>
+    <span>
+      All cases in this library have been <strong>fully anonymised</strong> — names,
+      companies, locations and any identifying details have been removed by AI before
+      indexing. Only cases where <strong>all parties explicitly consented</strong> to
+      sharing are included. Your search query is never stored or shared.
+    </span>
+  </div>
+
+  <!-- Search panel -->
+  <div class="search-panel">
+    <label style="font-size:0.85rem;font-weight:500;color:var(--muted);
+                  display:block;margin-bottom:0.5rem;">
+      Describe your situation
+    </label>
+    <textarea class="search-textarea" id="search-input" rows="4"
+      placeholder="e.g. I have a dispute with my employer regarding unpaid overtime and wrongful dismissal after 5 years of service. We are looking for a fair settlement that avoids litigation…"
+      oninput="updateSearchHints()"></textarea>
+    <div class="char-hint" id="char-hint">
+      Describe in at least 20 characters for best results.
+    </div>
+
+    <!-- Filters -->
+    <div class="search-filters">
+      <select id="type-filter" onchange="filterChanged()">
+        <option value="">All dispute types</option>
+        {% for value, label in dispute_types %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      {% if tags %}
+      <div class="tag-pills" id="tag-pills">
+        <span style="font-size:0.8rem;color:var(--muted);align-self:center;">
+          Topics:
+        </span>
+        {% for tag in tags[:12] %}
+        <button class="tag-pill" data-tag="{{ tag }}"
+                onclick="toggleTagFilter('{{ tag }}', this)">
+          {{ tag }}
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="search-row">
+      <button class="btn btn-accent" id="search-btn"
+              onclick="runSearch()" style="flex-shrink:0;">
+        Search cases
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="clearSearch()"
+              style="flex-shrink:0;">
+        Clear
+      </button>
+      <span id="search-status" style="font-size:0.82rem;color:var(--muted);
+                                       align-self:center;"></span>
+    </div>
+  </div>
+
+  <!-- Results area -->
+  <div id="results-area">
+    <!-- Initial state -->
+    <div class="search-state" id="initial-state">
+      <div class="icon">⚖️</div>
+      <h3>Find precedents for your case</h3>
+      <p>Describe your dispute above and search our library of<br>
+         anonymised, resolved mediation agreements.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Copied toast -->
+<div id="copy-toast">✓ Copied to clipboard</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeTag = '';
+let lastResults = [];
+
+function updateSearchHints() {
+  const text = document.getElementById('search-input').value;
+  const hint = document.getElementById('char-hint');
+  if (text.length === 0) {
+    hint.textContent = 'Describe in at least 20 characters for best results.';
+    hint.style.color = 'var(--muted)';
+  } else if (text.length < 20) {
+    hint.textContent = `${20 - text.length} more characters needed.`;
+    hint.style.color = 'var(--accent)';
+  } else {
+    hint.textContent = `${text.length} characters — ready to search.`;
+    hint.style.color = 'var(--sage-dark)';
+  }
+}
+
+function toggleTagFilter(tag, btn) {
+  if (activeTag === tag) {
+    activeTag = '';
+    btn.classList.remove('active');
+  } else {
+    document.querySelectorAll('.tag-pill').forEach(p => p.classList.remove('active'));
+    activeTag = tag;
+    btn.classList.add('active');
+  }
+}
+
+function filterChanged() {
+  if (lastResults.length > 0) runSearch();
+}
+
+function showSkeletons() {
+  const area = document.getElementById('results-area');
+  area.innerHTML = Array(3).fill(0).map((_, i) => `
+    <div class="result-card" style="animation-delay:${i * 0.08}s">
+      <div class="skeleton sk-line medium" style="margin-bottom:12px;"></div>
+      <div class="skeleton sk-line long"></div>
+      <div class="skeleton sk-line long"></div>
+      <div class="skeleton sk-line short" style="margin-top:8px;"></div>
+    </div>
+  `).join('');
+}
+
+async function runSearch() {
+  const query = document.getElementById('search-input').value.trim();
+  if (!query || query.length < 20) {
+    document.getElementById('search-input').focus();
+    document.getElementById('char-hint').style.color = 'var(--danger)';
+    return;
+  }
+
+  const btn = document.getElementById('search-btn');
+  const status = document.getElementById('search-status');
+  btn.innerHTML = '<span class="spinner"></span> Searching…';
+  btn.disabled = true;
+  status.textContent = 'Analysing your case and finding similar agreements…';
+  showSkeletons();
+
+  const payload = {
+    query,
+    dispute_type: document.getElementById('type-filter').value,
+    tag: activeTag,
+    limit: 8,
+  };
+
+  try {
+    const res = await fetch('/search/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) {
+      showError(data.error);
+    } else {
+      lastResults = data.results || [];
+      renderResults(lastResults, data.total);
+      status.textContent = '';
+    }
+  } catch (e) {
+    showError('Network error. Please try again.');
+  } finally {
+    btn.innerHTML = 'Search cases';
+    btn.disabled = false;
+  }
+}
+
+function renderResults(results, total) {
+  const area = document.getElementById('results-area');
+  if (!results || results.length === 0) {
+    area.innerHTML = `
+      <div class="search-state">
+        <div class="icon">🔍</div>
+        <h3>No similar cases found</h3>
+        <p>Try broadening your description or removing filters.<br>
+           The library grows as more mediations are closed and consented to sharing.</p>
+      </div>`;
+    return;
+  }
+
+  area.innerHTML = `
+    <div class="results-header">
+      <h2>Similar Cases Found</h2>
+      <span class="result-count">${results.length} result${results.length !== 1 ? 's' : ''} — sorted by relevance</span>
+    </div>
+    ${results.map((r, i) => buildResultCard(r, i)).join('')}
+  `;
+}
+
+function buildResultCard(r, i) {
+  const tagHtml = r.tags.map(t =>
+    `<span class="result-tag" onclick="applyTagFromResult('${t}')" title="Filter by this topic">${t}</span>`
+  ).join('');
+
+  const agId = `ag-${r.id}`;
+
+  return `
+    <div class="result-card" style="animation-delay:${i * 0.06}s">
+      <div class="result-top">
+        <div class="result-summary">${escHtml(r.summary)}</div>
+        <div class="relevance-bar" title="Relevance to your case">
+          <div class="relevance-track">
+            <div class="relevance-fill" style="width:${r.relevance_pct}%"></div>
+          </div>
+          <span class="relevance-label">${r.relevance_pct}% match</span>
+        </div>
+      </div>
+
+      <div class="agreement-block">
+        <button class="agreement-toggle" onclick="toggleAgreement('${agId}', this)">
+          <span>📋 View agreement reached</span>
+          <span id="arrow-${agId}">▾</span>
+        </button>
+        <div class="agreement-content" id="${agId}">
+          ${escHtml(r.agreement)}
+          <div style="margin-top:0.8rem;">
+            <button class="btn btn-outline btn-sm"
+                    onclick="copyAgreement('${agId}', '${escAttr(r.agreement)}')">
+              Copy agreement text
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-tags">${tagHtml}</div>
+      <div class="result-date">Closed ${r.created_at}</div>
+
+      <div class="use-as-reference">
+        <p>Use this as inspiration to draft your own proposal — adapt the language to your specific circumstances.</p>
+        <button class="btn btn-primary btn-sm"
+                onclick="useAsTemplate('${escAttr(r.agreement)}')">
+          Use as template
+        </button>
+      </div>
+    </div>`;
+}
+
+function toggleAgreement(id, btn) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow-' + id);
+  el.classList.toggle('open');
+  arrow.textContent = el.classList.contains('open') ? '▴' : '▾';
+}
+
+function applyTagFromResult(tag) {
+  document.querySelectorAll('.tag-pill').forEach(p => {
+    if (p.dataset.tag === tag) {
+      p.classList.add('active');
+      activeTag = tag;
+    } else {
+      p.classList.remove('active');
+    }
+  });
+  runSearch();
+}
+
+function copyAgreement(id, text) {
+  navigator.clipboard.writeText(text).then(() => showToast('✓ Agreement copied'));
+}
+
+function useAsTemplate(text) {
+  // Store in sessionStorage so the mediation view can pick it up
+  sessionStorage.setItem('agreementTemplate', text);
+  showToast('✓ Template ready — open your mediation to use it');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('copy-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('type-filter').value = '';
+  document.querySelectorAll('.tag-pill').forEach(p => p.classList.remove('active'));
+  activeTag = '';
+  lastResults = [];
+  document.getElementById('results-area').innerHTML = `
+    <div class="search-state" id="initial-state">
+      <div class="icon">⚖️</div>
+      <h3>Find precedents for your case</h3>
+      <p>Describe your dispute above and search our library of<br>
+         anonymised, resolved mediation agreements.</p>
+    </div>`;
+  updateSearchHints();
+}
+
+function showError(msg) {
+  document.getElementById('results-area').innerHTML = `
+    <div class="search-state">
+      <div class="icon">⚠️</div>
+      <h3>Something went wrong</h3>
+      <p>${escHtml(msg)}</p>
+    </div>`;
+}
+
+// Allow Enter key in textarea (Shift+Enter = newline, Enter = search)
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    runSearch();
+  }
+});
+
+// Escape helpers
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  return String(str).replace(/'/g, "\\'").replace(/\n/g, ' ');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Log In – BridgeSpace{% endblock %}
+
+{% block head %}
+<style>
+  .auth-wrap { max-width: 440px; margin: 0 auto; }
+  .auth-hero { text-align: center; margin-bottom: 2rem; }
+  .auth-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    margin-bottom: 0.4rem;
+  }
+  .auth-hero p { color: var(--muted); font-size: 0.95rem; }
+  .divider-or {
+    display: flex; align-items: center; gap: .8rem;
+    color: var(--muted); font-size: .82rem; margin: 1.2rem 0;
+  }
+  .divider-or::before, .divider-or::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .remember-row {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 1.4rem;
+  }
+  .remember-row label {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .88rem; color: var(--muted); margin: 0; cursor: pointer;
+  }
+  .remember-row input[type=checkbox] { width: auto; accent-color: var(--sage-dark); }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 3rem; }
+  .pw-toggle {
+    position: absolute; right: .8rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: .85rem; padding: 0; line-height: 1;
+  }
+  .lock-note {
+    display: flex; align-items: flex-start; gap: .6rem;
+    background: #F0F7F4; border-left: 3px solid var(--sage);
+    border-radius: 8px; padding: .8rem 1rem; margin-top: 1.4rem;
+    font-size: .82rem; color: var(--sage-dark); line-height: 1.5;
+  }
+  .invite-banner {
+    display: flex; align-items: flex-start; gap: .6rem;
+    background: #FFF8EE; border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: .8rem 1rem; margin-bottom: 1.2rem;
+    font-size: .88rem; color: var(--accent); line-height: 1.5;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+
+  <div class="auth-hero">
+    <h1>Welcome back</h1>
+    <p>Log in to access your confidential mediation cases.</p>
+  </div>
+
+  {% if next %}
+  <div class="invite-banner">
+    <span style="font-size:1.1rem;flex-shrink:0;">&#9993;</span>
+    <span>
+      You have a pending mediation invitation.
+      Log in and you will be taken there automatically.
+    </span>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form method="POST"
+          action="{{ url_for('auth.login', next=next) if next else url_for('auth.login') }}"
+          novalidate>
+
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+          value="{{ request.form.get('email', '') }}"
+          required
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="pw-wrap">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Your password"
+            required
+          >
+          <button
+            type="button"
+            class="pw-toggle"
+            onclick="togglePw()"
+            aria-label="Show / hide password"
+          >
+            <span id="pw-eye">&#128065;</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="remember-row">
+        <label>
+          <input type="checkbox" name="remember">
+          Keep me logged in
+        </label>
+        <a href="{{ url_for('auth.forgot_password') }}" style="font-size:.85rem;">
+          Forgot password?
+        </a>
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-primary"
+        style="width:100%;justify-content:center;"
+      >
+        Log in
+      </button>
+    </form>
+
+    <div class="divider-or">or</div>
+
+    <p style="text-align:center;font-size:.9rem;color:var(--muted);">
+      Don't have an account?
+      <a
+        href="{{ url_for('auth.register', next=next) if next else url_for('auth.register') }}"
+        style="font-weight:500;"
+      >
+        Create one for free
+      </a>
+    </p>
+  </div>
+
+  <div class="lock-note">
+    <span style="font-size:1.1rem;flex-shrink:0;">&#128274;</span>
+    <span>
+      BridgeSpace is a confidential platform. Your identity and case details
+      are never shared with third parties without your explicit consent.
+    </span>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw() {
+  const inp = document.getElementById('password');
+  const eye = document.getElementById('pw-eye');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    eye.innerHTML = '&#128584;';
+  } else {
+    inp.type = 'password';
+    eye.innerHTML = '&#128065;';
+  }
+}
+</script>
+{% endblock %}
