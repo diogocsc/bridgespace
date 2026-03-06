@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Admin – BridgeSpace{% endblock %}
+
+{% block content %}
+<div style="max-width:800px;margin:0 auto">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:0.25rem">
+    Admin backoffice
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:2rem">
+    Manage payment settings, users, and mediations.
+  </p>
+
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+      Overview
+    </div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Users</div>
+        <div style="font-size:1.3rem;font-weight:700;">{{ stats.users }}</div>
+      </div>
+      <div>
+        <div style="font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Mediations</div>
+        <div style="font-size:1.3rem;font-weight:700;">{{ stats.mediations }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+      Sections
+    </div>
+    <ul style="list-style:none;padding:0;margin:0;">
+      {% if current_user.is_superadmin %}
+      <li style="margin-bottom:.5rem;">
+        <a href="{{ url_for('admin.payment_settings') }}">Payment settings (Stripe / PayPal) — Superadmin</a>
+      </li>
+      {% endif %}
+      {% if current_user.is_superadmin %}
+      <li style="margin-bottom:.5rem;">
+        <a href="{{ url_for('admin.integration_settings') }}">Messaging integrations (WhatsApp, Telegram, Signal)</a>
+      </li>
+      {% endif %}
+      <li style="margin-bottom:.5rem;">
+        <a href="{{ url_for('admin.mediator_metrics_overview') }}">Mediator metrics</a>
+      </li>
+      <li style="margin-bottom:.5rem;">
+        <a href="{{ url_for('admin.users') }}">Users &amp; roles</a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.mediations') }}">Mediations</a>
+      </li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+

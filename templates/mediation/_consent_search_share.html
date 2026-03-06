@@ -1,0 +1,20 @@
+{# Show when mediation is closed with agreement and current user is a party. Include where show_consent_search is True. #}
+<div class="card" style="margin-top:1rem;border-left:3px solid var(--sage)">
+  <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.5rem">{{ t.consent_search_title | default('Share this case in search') }}</h3>
+  <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+    {{ t.consent_search_intro | default('With your consent, this mediation can be included in the platform search so others can find similar cases. Private data is masked; only anonymised summaries are used.') }}
+  </p>
+  <p class="text-sm" style="margin-bottom:0.5rem">{{ t.consent_search_status | default('Your consent:') }}
+    {% if participant.consent_search_share is true %}
+      <strong style="color:var(--success)">{{ t.consent_search_yes | default('Yes, allow search sharing') }}</strong>
+    {% elif participant.consent_search_share is false %}
+      <strong style="color:var(--muted)">{{ t.consent_search_no | default('No, do not share') }}</strong>
+    {% else %}
+      <span class="text-muted">—</span>
+    {% endif %}
+  </p>
+  <form method="POST" action="{{ url_for('mediation.consent_search_share', mediation_id=mediation.id) }}" style="display:inline-flex;gap:0.5rem;flex-wrap:wrap">
+    <button type="submit" name="consent" value="1" class="btn btn-outline btn-sm">{{ t.consent_search_yes | default('Yes, allow') }}</button>
+    <button type="submit" name="consent" value="0" class="btn btn-outline btn-sm">{{ t.consent_search_no | default('No') }}</button>
+  </form>
+</div>

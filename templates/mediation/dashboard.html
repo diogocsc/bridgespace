@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — BridgeSpace{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center" style="margin-bottom:2rem;flex-wrap:wrap;gap:0.75rem">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem">{{ t.your_mediations }}</h1>
+  <div style="display:flex;gap:0.5rem;align-items:center">
+    {% if current_user.is_mediator %}
+    <a href="{{ url_for('mediation.mediator_metrics') }}" class="btn btn-outline btn-sm">{{ t.my_metrics | default('My metrics') }}</a>
+    <a href="{{ url_for('mediation.payout_settings') }}" class="btn btn-outline btn-sm">{{ t.payout_settings | default('Payout settings') }}</a>
+    {% endif %}
+    <a href="{{ url_for('mediation.create_mediation') }}" class="btn btn-primary">{{ t.new_mediation }}</a>
+  </div>
+</div>
+
+{% macro phase_badge(med) %}
+  {% if med.mediation_type == 'unstructured' %}
+    <span class="badge" style="background:#E8F0EE;color:var(--sage-dark)">{{ t.mediation_type_unstructured_badge | default('Unstructured') }}</span>
+  {% elif med.phase == 'pre_mediation' %}
+    <span class="badge badge-pending">Pre-mediation</span>
+  {% elif med.phase == 'perspectives' %}
+    <span class="badge badge-pending">Perspectives</span>
+  {% elif med.phase == 'agenda' %}
+    <span class="badge badge-async">Agenda</span>
+  {% elif med.phase == 'proposals' %}
+    <span class="badge badge-active">Proposals</span>
+  {% else %}
+    <span class="badge badge-closed">Agreement</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro session_row(med) %}
+<div class="card" style="margin-bottom:0.75rem;padding:1rem 1.5rem">
+  <div class="flex justify-between items-center">
+    <div>
+      <div style="font-weight:600;margin-bottom:0.25rem">{{ med.title }}</div>
+      <div class="text-sm text-muted">
+        {{ phase_badge(med) }}
+        &nbsp;·&nbsp;{{ (med.participants|rejectattr('role','equalto','mediator')|list|length) }} {{ t.participants_count }}
+        &nbsp;·&nbsp;{{ med.created_at.strftime('%d %b %Y') }}
+        {% if med.is_live %}&nbsp;·&nbsp;<span class="badge badge-live">Live</span>{% endif %}
+      </div>
+    </div>
+    <a href="{{ url_for('mediation.session', mediation_id=med.id) }}" class="btn btn-outline btn-sm">{{ t.open_btn }}</a>
+  </div>
+</div>
+{% endmacro %}
+
+{% if as_mediator %}
+  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.75rem">{{ t.sessions_i_mediate }}</h2>
+  {% for med in as_mediator %}{{ session_row(med) }}{% endfor %}
+{% endif %}
+
+{% if as_participant %}
+  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:2rem 0 0.75rem">{{ t.sessions_i_participate }}</h2>
+  {% for med in as_participant %}{{ session_row(med) }}{% endfor %}
+{% endif %}
+
+{% if not as_mediator and not as_participant %}
+  <div class="card" style="text-align:center;padding:3rem">
+    <p style="color:var(--muted);margin-bottom:1.5rem">{{ t.no_active_sessions }}</p>
+    {% if current_user.is_mediator or current_user.is_admin %}
+      <a href="{{ url_for('mediation.create_mediation') }}" class="btn btn-primary">{{ t.start_first_mediation }}</a>
+    {% else %}
+      <a href="{{ url_for('mediation.request_mediation') }}" class="btn btn-primary">{{ t.request_mediation }}</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

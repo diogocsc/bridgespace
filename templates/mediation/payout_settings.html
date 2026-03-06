@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ t.payout_settings | default('Payout settings') }} – {{ t.site_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width:800px;margin:0 auto">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.25rem">
+    {{ t.payout_settings | default('Payout settings') }}
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    {{ t.payout_settings_intro | default('Add your Stripe Connect or PayPal account to receive payments from mediations you facilitate. The platform retains a commission on each paid mediation; the remainder is paid to you.') }}
+  </p>
+
+  <div class="card" style="margin-bottom:1.5rem">
+    <form method="POST">
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        {{ t.payout_stripe_connect_section | default('Stripe Connect') }}
+      </div>
+      <div class="form-group">
+        <label for="stripe_connect_account_id">{{ t.payout_stripe_connect_label | default('Stripe Connect account ID') }}</label>
+        <input type="text" id="stripe_connect_account_id" name="stripe_connect_account_id"
+               value="{{ config.stripe_connect_account_id if config else '' }}"
+               placeholder="acct_...">
+        <small class="text-muted">{{ t.payout_stripe_connect_hint | default('From your Stripe Connect Express dashboard.') }}</small>
+      </div>
+
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:.75rem 0;">
+        {{ t.payout_paypal_section | default('PayPal') }}
+      </div>
+      <div class="form-group">
+        <label for="paypal_merchant_id">{{ t.payout_paypal_label | default('PayPal merchant ID / email') }}</label>
+        <input type="text" id="paypal_merchant_id" name="paypal_merchant_id"
+               value="{{ config.paypal_merchant_id if config else '' }}"
+               placeholder="{{ t.payout_paypal_placeholder | default('Merchant ID or email for payouts') }}">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">
+        {{ t.payout_save_btn | default('Save payout settings') }}
+      </button>
+    </form>
+  </div>
+
+  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.75rem">
+    {{ t.payout_transactions_heading | default('Payment transactions') }}
+  </h2>
+  <p class="text-muted text-sm" style="margin-bottom:0.75rem">
+    {{ t.payout_transactions_intro | default('All payments for mediations you mediate are listed below. Platform commission is deducted; you receive the mediator payout.') }}
+  </p>
+  {% if transactions %}
+  <div class="card" style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);text-align:left">
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_date | default('Date') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_mediation | default('Mediation') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_kind | default('Kind') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_amount | default('Amount') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_commission | default('Commission') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_your_payout | default('Your payout') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_status | default('Status') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ tx.created_at.strftime('%d %b %Y %H:%M') }}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">
+            <a href="{{ url_for('mediation.session', mediation_id=tx.mediation_id) }}">{{ tx.mediation.title if tx.mediation else '#' ~ tx.mediation_id }}</a>
+          </td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{% if tx.kind == 'standard' %}{{ t.payment_kind_standard | default('Fixed price') }}{% elif tx.kind == 'donation' %}{{ t.payment_kind_donation | default('Donation') }}{% elif tx.kind == 'probono' %}{{ t.payment_kind_probono | default('Pro bono') }}{% else %}{{ tx.kind }}{% endif %}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format(tx.amount_cents / 100) }} {{ tx.currency }}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format((tx.platform_commission_cents or 0) / 100) }} {{ tx.currency }}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format((tx.mediator_payout_cents or 0) / 100) }} {{ tx.currency }}</td>
+          <td style="padding:0.5rem 0.75rem"><span class="badge badge-{{ 'closed' if tx.status == 'paid' else 'pending' }}">{% if tx.status == 'paid' %}{{ t.status_paid | default('Paid') }}{% else %}{{ t.pending | default('Pending') }}{% endif %}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:2rem">
+    <p class="text-muted">{{ t.payout_no_transactions | default('No payment transactions yet.') }}</p>
+  </div>
+  {% endif %}
+
+  <p style="margin-top:1.5rem">
+    <a href="{{ url_for('mediation.dashboard') }}">{{ t.payout_back_dashboard | default('← Dashboard') }}</a>
+    &nbsp;·&nbsp;
+    <a href="{{ url_for('mediation.mediator_metrics') }}">{{ t.my_metrics | default('My metrics') }}</a>
+  </p>
+</div>
+{% endblock %}

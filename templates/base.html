@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_lang }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -93,6 +93,7 @@
   .flash-danger { background: #FDE8E8; color: var(--danger); border-left: 3px solid var(--danger); }
   .flash-success { background: #E8F5EE; color: var(--success); border-left: 3px solid var(--success); }
   .flash-info { background: #E8F0F5; color: #2980B9; border-left: 3px solid #2980B9; }
+  .flash-warning { background: #FFF8EE; color: var(--accent); border-left: 3px solid var(--accent); }
 
   /* BADGES */
   .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
@@ -117,25 +118,87 @@
   .items-center { align-items: center; }
   .gap-2 { gap: 1rem; }
   .justify-between { justify-content: space-between; }
+
+  /* TRANSLATE PANEL (lazy-loaded Google Translate Element) */
+  .translate-panel {
+    display: none;
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    z-index: 250;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 36px rgba(44,44,44,0.18);
+    padding: 0.9rem 1rem;
+    min-width: 240px;
+  }
+  .translate-panel.active { display: block; }
+  .translate-panel h4 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: 0.55rem;
+  }
+  .translate-note {
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .translate-close {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 0;
+    line-height: 1;
+  }
 </style>
 {% block head %}{% endblock %}
 </head>
 <body>
 <nav class="main-nav">
-  <a href="{{ url_for('mediation.dashboard') }}" class="nav-brand">Bridge<span>Space</span></a>
+  {# Brand link: dashboard if logged in, login page otherwise — avoids login_required redirect loop #}
+  <a href="{{ url_for('mediation.dashboard') if current_user.is_authenticated else url_for('auth.login') }}"
+     class="nav-brand">Bridge<span>Space</span></a>
   <div class="nav-links">
     {% if current_user.is_authenticated %}
-      <a href="{{ url_for('mediation.dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('search.search_page') }}">Search Cases</a>
-      <a href="{{ url_for('mediation.create_mediation') }}">+ New Mediation</a>
-      <a href="{{ url_for('auth.preferences') }}">Preferences</a>
-      <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm">Logout</a>
+      <a href="{{ url_for('mediation.dashboard') }}">{{ t.dashboard }}</a>
+      <a href="{{ url_for('search.search_page') }}">{{ t.search_cases }}</a>
+      {% if current_user.is_mediator or current_user.is_admin %}
+        <a href="{{ url_for('mediation.create_mediation') }}">{{ t.new_mediation }}</a>
+      {% else %}
+        <a href="{{ url_for('mediation.request_mediation') }}">{{ t.request_mediation }}</a>
+      {% endif %}
+      <a href="{{ url_for('auth.preferences') }}">{{ t.preferences }}</a>
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.dashboard') }}">{{ t.admin }}</a>
+      {% endif %}
+      <button type="button" class="btn btn-outline btn-sm" onclick="toggleTranslatePanel()" aria-haspopup="true">
+        {{ t.translate }}
+      </button>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm">{{ t.logout }}</a>
     {% else %}
-      <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-sm">Login</a>
-      <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Register</a>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-sm">{{ t.login }}</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">{{ t.register }}</a>
+      <button type="button" class="btn btn-outline btn-sm" onclick="toggleTranslatePanel()" aria-haspopup="true">
+        {{ t.translate }}
+      </button>
     {% endif %}
   </div>
 </nav>
+
+<div id="translate-panel" class="translate-panel" role="dialog" aria-label="{{ t.translate }}">
+  <button type="button" class="translate-close" onclick="closeTranslatePanel()" aria-label="{{ t.close }}">×</button>
+  <h4>{{ t.translate_page }}</h4>
+  <div id="google_translate_element"></div>
+  <div class="translate-note">
+    {{ t.translate_note }}
+  </div>
+</div>
 
 <main>
   <div class="container page">
@@ -147,6 +210,50 @@
     {% block content %}{% endblock %}
   </div>
 </main>
+
+<script>
+  let _googleTranslateLoaded = false;
+
+  function ensureGoogleTranslateLoaded() {
+    if (_googleTranslateLoaded) return;
+    _googleTranslateLoaded = true;
+
+    window.googleTranslateElementInit = function () {
+      /* global google */
+      new google.translate.TranslateElement(
+        { pageLanguage: '{{ current_lang }}', autoDisplay: false },
+        'google_translate_element'
+      );
+    };
+
+    const script = document.createElement('script');
+    script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    script.async = true;
+    document.head.appendChild(script);
+  }
+
+  function toggleTranslatePanel() {
+    const panel = document.getElementById('translate-panel');
+    const isActive = panel.classList.toggle('active');
+    if (isActive) ensureGoogleTranslateLoaded();
+  }
+
+  function closeTranslatePanel() {
+    document.getElementById('translate-panel').classList.remove('active');
+  }
+
+  // Close on outside click / Escape
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('translate-panel');
+    if (!panel.classList.contains('active')) return;
+    const clickedInside = panel.contains(e.target);
+    const clickedTranslateButton = (e.target && e.target.closest && e.target.closest('button') && e.target.closest('button').getAttribute('onclick') === 'toggleTranslatePanel()');
+    if (!clickedInside && !clickedTranslateButton) closeTranslatePanel();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeTranslatePanel();
+  });
+</script>
 
 {% block scripts %}{% endblock %}
 </body>

@@ -1,0 +1,52 @@
+{# Shared phase stepper — include in every phase template #}
+<div style="margin-bottom:2rem">
+  <div class="flex justify-between items-center" style="margin-bottom:0.5rem">
+    <div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.1rem">{{ mediation.title }}</h1>
+      {% if mediation.description %}
+        <p class="text-sm text-muted">{{ mediation.description }}</p>
+      {% endif %}
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <a href="{{ url_for('mediation.invite_page', mediation_id=mediation.id) }}"
+         class="btn btn-outline btn-sm">{{ t.invite_parties_btn | default('+ Invite parties') }}</a>
+      {% if current_user.id == mediation.mediator_id and mediation.phase != 'agreement' %}
+      <form method="POST" action="{{ url_for('mediation.advance_phase', mediation_id=mediation.id) }}"
+            onsubmit="return confirm(this.getAttribute('data-confirm') || 'Advance to the next phase? This cannot be undone.');"
+            data-confirm="{{ t.advance_phase_confirm | default('Advance to the next phase? This cannot be undone.') }}">
+        <button type="submit" class="btn btn-outline btn-sm">{{ t.advance_phase_btn | default('Advance phase →') }}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Stepper bar: for unstructured only Pre-mediation + Conversation; for structured the full 5 phases #}
+  {% if mediation.mediation_type == 'unstructured' %}
+    {% set phase_labels = [('pre_mediation', (t.phase_pre_mediation | default('0 · Pre-mediation'))), ('perspectives', (t.phase_conversation | default('1 · Conversation')))] %}
+    {% set phases = ['pre_mediation', 'perspectives'] %}
+    {% set cur_idx = 0 if mediation.phase == 'pre_mediation' else 1 %}
+  {% else %}
+    {% set phase_labels = [('pre_mediation','0 · Pre-mediation'),('perspectives','1 · Perspectives'),('agenda','2 · Agenda'),('proposals','3 · Proposals'),('agreement','4 · Agreement')] %}
+    {% set phases = ['pre_mediation','perspectives','agenda','proposals','agreement'] %}
+    {% set cur_idx = phases.index(mediation.phase) if mediation.phase in phases else 0 %}
+  {% endif %}
+  <div style="display:flex;border-bottom:2px solid var(--border)">
+    {% for ph, label in phase_labels %}
+      {% set idx = loop.index0 %}
+      {% if mediation.mediation_type == 'unstructured' and ph == 'perspectives' %}
+        <span style="flex:1;text-align:center;padding:0.6rem 0.25rem;font-size:0.85rem;font-weight:400;color:var(--muted)">
+          {{ label }}
+        </span>
+      {% else %}
+        <a href="{{ url_for('mediation.' + ph, mediation_id=mediation.id) }}"
+           style="flex:1;text-align:center;padding:0.6rem 0.25rem;font-size:0.85rem;font-weight:{% if idx == cur_idx %}600{% else %}400{% endif %};
+                  color:{% if idx < cur_idx %}var(--success){% elif idx == cur_idx %}var(--sage-dark){% else %}var(--muted){% endif %};
+                  border-bottom:2px solid {% if idx < cur_idx %}var(--success){% elif idx == cur_idx %}var(--sage-dark){% else %}transparent{% endif %};
+                  margin-bottom:-2px;pointer-events:{% if idx > cur_idx %}none{% else %}auto{% endif %};
+                  text-decoration:none">
+          {{ label }}
+        </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>

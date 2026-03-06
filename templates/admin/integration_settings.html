@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Integration settings – Admin{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.25rem">
+    Messaging integrations
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    Configure WhatsApp, Telegram, and Signal for notifications (e.g. mediator confirmation, admin alerts).
+    Users can add their contact details in Preferences; messages will be sent to all configured channels.
+  </p>
+
+  <div class="card">
+    <form method="POST">
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        WhatsApp
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;">
+          <input type="checkbox" name="whatsapp_enabled" value="1" {% if whatsapp_enabled %}checked{% endif %}>
+          Enable WhatsApp notifications
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="whatsapp_api_key">API key / token</label>
+        <input type="text" id="whatsapp_api_key" name="whatsapp_api_key" value="{{ whatsapp_api_key }}" placeholder="e.g. Twilio or WhatsApp Business API">
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
+
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        Telegram
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;">
+          <input type="checkbox" name="telegram_enabled" value="1" {% if telegram_enabled %}checked{% endif %}>
+          Enable Telegram notifications
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="telegram_bot_token">Bot token</label>
+        <input type="text" id="telegram_bot_token" name="telegram_bot_token" value="{{ telegram_bot_token }}" placeholder="From @BotFather">
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
+
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        Signal
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;">
+          <input type="checkbox" name="signal_enabled" value="1" {% if signal_enabled %}checked{% endif %}>
+          Enable Signal notifications
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="signal_api_url">API URL / webhook</label>
+        <input type="text" id="signal_api_url" name="signal_api_url" value="{{ signal_api_url }}" placeholder="e.g. signal-cli REST or third-party API endpoint">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">
+        Save settings
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

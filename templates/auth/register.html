@@ -38,15 +38,14 @@
 {% block content %}
 <div class="auth-wrap">
   <div class="auth-hero">
-    <h1>Join BridgeSpace</h1>
-    <p>Create your secure, confidential account.</p>
+    <h1>{{ t.join }}</h1>
+    <p>{{ t.create_account_subtitle }}</p>
   </div>
 
   {% if next %}
   <div class="invite-banner">
     <span style="font-size:1.1rem;flex-shrink:0;">&#9993;</span>
-    <span>You have a pending mediation invitation.
-    Create your account and you will be taken there automatically.</span>
+    <span>{{ t.invite_register_banner }}</span>
   </div>
   {% endif %}
 
@@ -58,31 +57,31 @@
       {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 
       <div class="form-group">
-        <label for="display_name">Display name</label>
+        <label for="display_name">{{ t.display_name }}</label>
         <input type="text" id="display_name" name="display_name"
-               placeholder="How others will see you"
+               placeholder="{{ t.display_name_placeholder }}"
                value="{{ form_data.get('display_name','') }}" required autofocus>
       </div>
 
       <div class="form-group">
-        <label for="username">Username</label>
+        <label for="username">{{ t.username }}</label>
         <input type="text" id="username" name="username"
-               placeholder="Unique handle (min. 3 characters)"
+               placeholder="{{ t.username_placeholder }}"
                value="{{ form_data.get('username','') }}" required minlength="3">
       </div>
 
       <div class="form-group">
-        <label for="email">Email address</label>
+        <label for="email">{{ t.email_address }}</label>
         <input type="email" id="email" name="email"
                placeholder="you@example.com"
                value="{{ form_data.get('email','') }}" required>
       </div>
 
       <div class="form-group">
-        <label for="password">Password <span style="font-weight:400;">(min. 8 characters)</span></label>
+        <label for="password">{{ t.password }} <span style="font-weight:400;">{{ t.password_min_hint }}</span></label>
         <div class="pw-wrap">
           <input type="password" id="password" name="password"
-                 placeholder="At least 8 characters" required minlength="8"
+                 placeholder="{{ t.password_placeholder }}" required minlength="8"
                  oninput="checkStrength(this.value)">
           <button type="button" class="pw-toggle" onclick="togglePw('password','eye1')"
                   aria-label="Show/hide password"><span id="eye1">&#128065;</span></button>
@@ -92,26 +91,40 @@
       </div>
 
       <div class="form-group">
-        <label for="confirm_password">Confirm password</label>
+        <label for="confirm_password">{{ t.confirm_password }}</label>
         <div class="pw-wrap">
           <input type="password" id="confirm_password" name="confirm_password"
-                 placeholder="Repeat your password" required>
+                 placeholder="{{ t.repeat_password }}" required>
           <button type="button" class="pw-toggle" onclick="togglePw('confirm_password','eye2')"
                   aria-label="Show/hide password"><span id="eye2">&#128065;</span></button>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Preferred language</label>
+        <div class="mediator-option" style="margin-bottom:1rem;">
+          <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;margin:0;">
+            <input type="checkbox" name="register_as_mediator" value="1"
+                   {% if form_data.get('register_as_mediator') %}checked{% endif %}
+                   style="width:auto;margin-top:0.25rem;accent-color:var(--sage-dark);">
+            <span>
+              <span style="font-weight:500;">{{ t.register_as_mediator }}</span>
+              <span class="text-sm text-muted" style="display:block;margin-top:0.2rem;">{{ t.register_as_mediator_hint }}</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ t.preferred_language }}</label>
         <p class="text-sm text-muted" style="margin-bottom:.6rem;">
-          Posts will be translated into this language automatically.
+          {{ t.posts_translated }}
         </p>
         <div class="lang-grid">
           {% for code, name in languages.items() %}
-          <label class="lang-card {% if form_data.get('preferred_language','en') == code %}selected{% endif %}"
+          <label class="lang-card {% if form_data.get('preferred_language','pt') == code %}selected{% endif %}"
                  id="lang-label-{{ code }}">
             <input type="radio" name="preferred_language" value="{{ code }}"
-                   {% if form_data.get('preferred_language','en') == code %}checked{% endif %}
+                   {% if form_data.get('preferred_language','pt') == code %}checked{% endif %}
                    onchange="selectLang('{{ code }}')">
             {{ name }}
           </label>
@@ -121,19 +134,19 @@
 
       <button type="submit" class="btn btn-primary"
               style="width:100%;justify-content:center;margin-top:.5rem;">
-        Create account
+        {{ t.create_account }}
       </button>
     </form>
 
     <p class="text-sm text-muted mt-2" style="text-align:center;">
-      Already have an account?
+      {{ t.already_have_account }}
       <a href="{{ url_for('auth.login', next=next) if next else url_for('auth.login') }}"
-         style="font-weight:500;">Log in</a>
+         style="font-weight:500;">{{ t.log_in }}</a>
     </p>
   </div>
 
   <p class="text-sm text-muted mt-2" style="text-align:center;padding:0 1rem;">
-    &#128274; All data is confidential and never shared without your explicit consent.
+    &#128274; {{ t.data_confidential }}
   </p>
 </div>
 {% endblock %}
@@ -163,11 +176,11 @@ function checkStrength(pw) {
   if (/[^A-Za-z0-9]/.test(pw))  score++;
   const levels = [
     { pct:'0%',   color:'var(--border)',    text:'' },
-    { pct:'25%',  color:'var(--danger)',    text:'Weak' },
-    { pct:'50%',  color:'var(--accent)',    text:'Fair' },
-    { pct:'75%',  color:'var(--sage-light)',text:'Good' },
-    { pct:'90%',  color:'var(--sage)',      text:'Strong' },
-    { pct:'100%', color:'var(--sage-dark)', text:'Very strong' },
+    { pct:'25%',  color:'var(--danger)',    text: document.documentElement.lang === 'pt' ? 'Fraca' : 'Weak' },
+    { pct:'50%',  color:'var(--accent)',    text: document.documentElement.lang === 'pt' ? 'Razoável' : 'Fair' },
+    { pct:'75%',  color:'var(--sage-light)',text: document.documentElement.lang === 'pt' ? 'Boa' : 'Good' },
+    { pct:'90%',  color:'var(--sage)',      text: document.documentElement.lang === 'pt' ? 'Forte' : 'Strong' },
+    { pct:'100%', color:'var(--sage-dark)', text: document.documentElement.lang === 'pt' ? 'Muito forte' : 'Very strong' },
   ];
   const lvl = levels[Math.min(score, levels.length - 1)];
   fill.style.width      = lvl.pct;

@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Perspectives — {{ mediation.title }}{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <style>
+    .ai-suggestion {
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      background: #F0F7F4;
+      border-left: 3px solid var(--sage);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      display: none;
+    }
+    .ai-suggestion.visible { display: block; }
+    .ai-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--sage-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+    .ai-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .char-count {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: right;
+      margin-top: 0.25rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+{% include "mediation/_phase_nav.html" %}
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem">
+
+  {# Left: submit form with optional AI reformulation before sharing #}
+  <div>
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem">{{ t.share_perspective }}</h3>
+      {% if mediation.phase == 'perspectives' %}
+      <form method="POST">
+        <input type="hidden" name="used_ai_reformulation" id="perspective-ai-used" value="0">
+        <div class="form-group">
+          <label>{{ t.your_point_of_view }}</label>
+          <textarea
+            id="perspective-text"
+            name="content"
+            placeholder="{{ t.perspective_placeholder }}"
+            required
+            style="min-height:140px"
+          ></textarea>
+          <div class="char-count">
+            <span id="perspective-char-count">0</span> {{ t.characters }}
+          </div>
+        </div>
+
+        <div class="ai-suggestion" id="perspective-ai-suggestion">
+          <div class="ai-label">✦ {{ t.ai_suggestion_reformulate }}</div>
+          <div id="perspective-ai-text"></div>
+          <div class="ai-actions">
+            <button type="button" class="btn btn-primary btn-sm" onclick="acceptPerspectiveAISuggestion()">
+              {{ t.use_this_version }}
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="dismissPerspectiveAISuggestion()">
+              {{ t.keep_my_wording }}
+            </button>
+          </div>
+        </div>
+
+        <div class="flex" style="margin-top:0.75rem;gap:0.6rem;flex-wrap:wrap;">
+          <button
+            type="button"
+            id="perspective-ai-btn"
+            class="btn btn-outline btn-sm"
+            onclick="requestPerspectiveAIFeedback()"
+          >
+            ✦ {{ t.ask_ai_reformulate }}
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="margin-left:auto;justify-content:center"
+          >
+            {{ t.add_perspective }}
+          </button>
+        </div>
+      </form>
+      {% else %}
+        <p class="text-muted text-sm">{{ t.phase_closed }}</p>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:1rem;padding:1rem">
+      <p class="text-sm text-muted">
+        <strong style="color:var(--charcoal)">{{ mediation.perspectives|length }}</strong> perspective(s) collected.<br>
+        At least <strong>2</strong> are needed to advance.
+      </p>
+    </div>
+  </div>
+
+  {# Right: perspectives list (newest → oldest) #}
+  <div>
+    <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem">
+      All perspectives
+      <span style="color:var(--muted);font-weight:400">(newest first)</span>
+    </h3>
+
+    {% if mediation.perspectives %}
+      {% for p in mediation.perspectives %}
+      <div class="card" style="margin-bottom:1rem;border-left:3px solid {% if p.author_id == current_user.id %}var(--sage-dark){% else %}var(--accent){% endif %}">
+        <div class="flex justify-between items-center" style="margin-bottom:0.5rem;flex-wrap:wrap;gap:0.35rem">
+          <strong style="font-size:0.9rem">{{ p.author.display_name or p.author.username }}</strong>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            {% if p.used_ai_reformulation %}
+            <span class="post-version-badge" style="font-size:0.7rem;padding:0.1rem 0.4rem;background:#F0F7F4;color:var(--sage-dark)" title="{{ t.ai_reformulation_badge_tooltip | default('This perspective was reformulated by AI before sharing') }}">✦ {{ t.ai_reformulation_badge | default('AI reformulation') }}</span>
+            {% endif %}
+            <span class="text-sm text-muted">{{ p.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+          </div>
+        </div>
+        <p style="margin-bottom:0">{{ p.content }}</p>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card" style="text-align:center;padding:2rem;color:var(--muted)">
+        No perspectives yet. Be the first to share your point of view.
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    const MEDIATION_ID = {{ mediation.id }};
+    let perspectiveAISuggestion = '';
+
+    const perspectiveTextarea = document.getElementById('perspective-text');
+    const charCountEl = document.getElementById('perspective-char-count');
+
+    if (perspectiveTextarea && charCountEl) {
+      perspectiveTextarea.addEventListener('input', () => {
+        charCountEl.textContent = perspectiveTextarea.value.length;
+        document.getElementById('perspective-ai-used').value = '0';
+      });
+    }
+
+    async function requestPerspectiveAIFeedback() {
+      const text = perspectiveTextarea.value.trim();
+      if (!text) {
+        alert('Please write your perspective first.');
+        return;
+      }
+      const btn = document.getElementById('perspective-ai-btn');
+      const panel = document.getElementById('perspective-ai-suggestion');
+      const suggestionEl = document.getElementById('perspective-ai-text');
+
+      btn.disabled = true;
+      const originalLabel = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Contacting AI…';
+
+      try {
+        const res = await fetch('/api/reformulate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ text, mediation_id: MEDIATION_ID })
+        });
+        const data = await res.json();
+        if (data.reformulated) {
+          perspectiveAISuggestion = data.reformulated;
+          suggestionEl.textContent = data.reformulated;
+          panel.classList.add('visible');
+        } else {
+          alert('AI reformulation unavailable: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Error contacting AI service. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalLabel;
+      }
+    }
+
+    function acceptPerspectiveAISuggestion() {
+      if (!perspectiveAISuggestion) return;
+      perspectiveTextarea.value = perspectiveAISuggestion;
+      document.getElementById('perspective-ai-used').value = '1';
+      document.getElementById('perspective-ai-suggestion').classList.remove('visible');
+      charCountEl.textContent = perspectiveTextarea.value.length;
+    }
+
+    function dismissPerspectiveAISuggestion() {
+      perspectiveAISuggestion = '';
+      document.getElementById('perspective-ai-used').value = '0';
+      document.getElementById('perspective-ai-suggestion').classList.remove('visible');
+    }
+  </script>
+{% endblock %}

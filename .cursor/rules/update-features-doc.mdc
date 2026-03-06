@@ -1,0 +1,17 @@
+---
+description: When adding new features, always update FEATURES.md accordingly
+alwaysApply: true
+---
+
+# Update FEATURES.md with new features
+
+When you add or change **user-facing or significant technical features** in this project:
+
+1. **Update [FEATURES.md](FEATURES.md)** in the same change set:
+   - Add the feature under the appropriate section (or add a new section if needed).
+   - Keep descriptions concise and consistent with the existing style.
+   - If the feature is admin-only or mediator-only, say so.
+
+2. **Optionally update [README.md](README.md)** if the new feature belongs in the high-level feature list there.
+
+Do not leave FEATURES.md outdated after implementing a new feature.

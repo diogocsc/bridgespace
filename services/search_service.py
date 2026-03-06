@@ -271,13 +271,16 @@ def index_closed_mediation(mediation, agreement_text: str) -> bool:
     from extensions import db
     from models import MediationAgreement, MediationParticipant, Post
 
-    # Verify all active participants have consented
+    # Require all parties (non-mediator) to have given per-mediation consent for search sharing
     participants = MediationParticipant.query.filter_by(
         mediation_id=mediation.id, is_active=True
     ).all()
-    all_consented = all(p.user.allow_case_sharing for p in participants)
+    parties = [p for p in participants if getattr(p, "role", None) != "mediator"]
+    all_consented = bool(parties) and all(
+        getattr(p, "consent_search_share", None) is True for p in parties
+    )
 
-    if not all_consented and not mediation.shared_publicly:
+    if not all_consented and not getattr(mediation, "shared_publicly", False):
         logger.info("Mediation %s not indexed: consent not given by all parties.",
                     mediation.id)
         return False

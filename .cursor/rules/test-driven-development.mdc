@@ -1,0 +1,16 @@
+---
+description: Use Test Driven Development (TDD) when developing code
+alwaysApply: true
+---
+
+# Test Driven Development
+
+When writing or changing code in this project, follow **Test Driven Development (TDD)**:
+
+1. **Red** – Write a failing test first that defines the desired behavior or API.
+2. **Green** – Implement the minimum code needed to make the test pass.
+3. **Refactor** – Improve the implementation while keeping tests green.
+
+- Prefer adding or updating tests (e.g. pytest) before or alongside implementation.
+- For new features or bug fixes, add tests that would have caught the bug or that document the expected behavior.
+- Run the test suite to confirm nothing regresses.

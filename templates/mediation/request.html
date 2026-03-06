@@ -1,22 +1,24 @@
 {% extends "base.html" %}
-{% block title %}New Mediation — BridgeSpace{% endblock %}
+{% block title %}Request a Mediation — BridgeSpace{% endblock %}
 
 {% block content %}
-<div style="max-width:580px;margin:0 auto">
-  <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:0.25rem">{{ t.start_new_mediation }}</h1>
-  <p class="text-muted text-sm" style="margin-bottom:2rem">{{ t.create_mediation_intro or t.you_will_be_mediator_invite }}</p>
+<div style="max-width:620px;margin:0 auto">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.9rem;margin-bottom:0.25rem">{{ t.request_mediation_title }}</h1>
+  <p class="text-muted text-sm" style="margin-bottom:2rem">
+    {{ t.request_mediation_intro }}
+  </p>
 
   <div class="card">
     <form method="POST">
 
       <div class="form-group">
         <label>{{ t.title_label }}</label>
-        <input type="text" name="title" placeholder="{{ t.title_placeholder_workplace }}" required>
+        <input type="text" name="title" placeholder="{{ t.title_placeholder }}" required>
       </div>
 
       <div class="form-group">
         <label>{{ t.description_label }}</label>
-        <textarea name="description" placeholder="{{ t.description_placeholder_optional }}" style="min-height:80px"></textarea>
+        <textarea name="description" placeholder="{{ t.description_placeholder_optional }}" style="min-height:90px"></textarea>
       </div>
 
       <div class="form-group">
@@ -25,11 +27,11 @@
           <option value="structured">{{ t.mediation_type_structured | default('Structured (phased process)') }}</option>
           <option value="unstructured">{{ t.mediation_type_unstructured | default('Unstructured (free-flow posts)') }}</option>
         </select>
-        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.mediation_type_hint | default('Structured: phased process. Unstructured: free-flow conversation; you mark the agreement and close with outcome.') }}</p>
+        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.mediation_type_hint | default('Structured follows pre-mediation → perspectives → agenda → proposals → agreement. Unstructured uses a single conversation where the mediator can mark the agreement and close with an outcome.') }}</p>
       </div>
 
       <div class="form-group">
-        <label>{{ t.mode_label }}</label>
+        <label>{{ t.mediation_mode }}</label>
         <select name="mode">
           <option value="async">{{ t.mode_async }}</option>
           <option value="live">{{ t.mode_live }}</option>
@@ -46,20 +48,25 @@
       <div class="form-group">
         <label>{{ t.choose_mediator }}</label>
         <select name="mediator_choice">
-          <option value="self">{{ t.mediator_self }}</option>
           <option value="auto">{{ t.mediator_auto }}</option>
           {% for m in mediators %}
-            {% if m.id != current_user.id %}
             <option value="{{ m.id }}">{{ m.display_name or m.username }}</option>
-            {% endif %}
           {% endfor %}
         </select>
-        <p class="text-sm text-muted" style="margin-top:0.35rem">{{ t.mediator_choice_hint | default('Automatic assigns a mediator; or choose a specific mediator.') }}</p>
+        <p class="text-sm text-muted" style="margin-top:0.35rem">{{ t.mediator_choice_hint | default('Automatic assigns a mediator for you; or choose a specific mediator from the list.') }}</p>
+        {% if not mediators %}
+          <p class="text-sm text-muted" style="margin-top:0.35rem">
+            {{ t.no_mediators_yet }}
+          </p>
+        {% endif %}
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
 
-      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">{{ t.invite_other_parties }} <span style="font-weight:400;color:var(--muted)">({{ t.optional_do_later }})</span></h3>
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">
+        {{ t.invite_other_parties }}
+        <span style="font-weight:400;color:var(--muted)">({{ t.optional_do_later }})</span>
+      </h3>
 
       <div class="form-group">
         <label>{{ t.invitees_label }}</label>
@@ -73,10 +80,11 @@
                   placeholder="{{ t.personal_message_placeholder }}"></textarea>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">
-        {{ t.create_mediation_submit }}
+      <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center">
+        {{ t.request_mediation_submit }}
       </button>
     </form>
   </div>
 </div>
 {% endblock %}
+

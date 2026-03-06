@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ t.mediator_metrics_title | default('My metrics') }} — BridgeSpace{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px; margin: 0 auto;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.5rem">
+    {{ t.mediator_metrics_title | default('My metrics') }}
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    {{ t.mediator_metrics_intro | default('Your performance indicators as a mediator.') }}
+  </p>
+
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1.25rem">
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
+          {{ t.metric_mediations_opened | default('Mediations opened') }}
+        </div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--charcoal)">{{ metrics.mediations_opened }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
+          {{ t.metric_agreements_reached | default('Agreements reached') }}
+        </div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--charcoal)">{{ metrics.agreements_reached }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
+          {{ t.metric_explanation_response | default('Explanation response (avg)') }}
+        </div>
+        <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.explanation_response_display }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
+          {{ t.metric_confirmation_response | default('Confirmation response (avg)') }}
+        </div>
+        <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.confirmation_response_display }}</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-sm text-muted">
+    <a href="{{ url_for('mediation.dashboard') }}">← {{ t.dashboard | default('Dashboard') }}</a>
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Pre-mediation — {{ mediation.title }}{% endblock %}
+
+{% block content %}
+{% include "mediation/_phase_nav.html" %}
+
+<div style="display:grid;grid-template-columns:1.3fr 0.7fr;gap:1.5rem">
+
+  <div class="card">
+    <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.25rem">{{ t.how_it_works }}</h3>
+    <div class="card" style="margin-bottom:1.25rem;padding:1rem;background:var(--cream);box-shadow:none;border:1px solid var(--border)">
+      <p class="text-sm" style="margin:0;line-height:1.6">
+        {% if mediation.mediation_type == 'unstructured' %}
+          {{ t.pre_mediation_system_unstructured | default('This is an unstructured mediation. There is a single conversation (posts) where everyone can contribute. The mediator can mark a specific post as the agreement and then close the mediation with an outcome.') }}
+        {% else %}
+          {{ t.pre_mediation_system_structured | default('This is a structured mediation. It follows five phases: Pre-mediation, Perspectives, Agenda, Proposals, Agreement. The mediator advances the phase when the group is ready.') }}
+        {% endif %}
+      </p>
+    </div>
+    <p class="text-sm text-muted" style="margin-bottom:1.25rem">
+      {{ t.mediator_explains_process }}
+    </p>
+
+    {% if current_user.id == mediation.mediator_id and mediation.phase == 'pre_mediation' %}
+      <form method="POST" style="margin-bottom:1rem">
+        <input type="hidden" name="action" value="save_text">
+        <div class="form-group">
+          <label>{{ t.mediator_explanation }}</label>
+          <textarea name="pre_mediation_text" style="min-height:160px"
+                    placeholder="{{ t.mediator_explanation_placeholder }}">{{ mediation.pre_mediation_text }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">{{ t.save_explanation }}</button>
+      </form>
+
+      <form method="POST" class="card" style="padding:1rem;background:var(--cream);box-shadow:none;border:1px dashed var(--border)">
+        <input type="hidden" name="action" value="set_price">
+        <div class="form-group" style="margin-bottom:1rem">
+          <label style="font-weight:600">{{ t.payment_type }}</label>
+          <select name="pricing_type" style="max-width:280px">
+            <option value="fixed" {{ 'selected' if (mediation.pricing_type or 'fixed') == 'fixed' else '' }}>{{ t.pricing_type_fixed }}</option>
+            <option value="donation" {{ 'selected' if (mediation.pricing_type or 'fixed') == 'donation' else '' }}>{{ t.pricing_type_donation }}</option>
+            <option value="probono" {{ 'selected' if (mediation.pricing_type or 'fixed') == 'probono' else '' }}>{{ t.pricing_type_probono }}</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-between" style="gap:1rem;flex-wrap:wrap;" id="price-row" data-show="{{ 'true' if (mediation.pricing_type or 'fixed') != 'probono' else 'false' }}">
+          <div>
+            <div style="font-weight:600">{{ t.price_per_party }}</div>
+            <div class="text-sm text-muted">{{ t.default_price_hint }}</div>
+          </div>
+          <div style="min-width:220px">
+            <input type="text" name="price_per_party" value="{{ '%.2f' % (mediation.price_per_party_cents / 100.0) }}"
+                   placeholder="50.00" style="text-align:right" id="price-per-party-input">
+            <button type="submit" class="btn btn-outline btn-sm" style="margin-top:0.5rem;width:100%;justify-content:center">{{ t.update_price }}</button>
+          </div>
+        </div>
+        <script>
+          (function(){
+            var sel = document.querySelector('select[name="pricing_type"]');
+            var row = document.getElementById('price-row');
+            if (!sel || !row) return;
+            function toggle(){ row.style.display = row.dataset.show === 'true' ? '' : 'none'; }
+            row.dataset.show = sel.value !== 'probono' ? 'true' : 'false';
+            toggle();
+            sel.addEventListener('change', function(){ row.dataset.show = this.value !== 'probono' ? 'true' : 'false'; toggle(); });
+          })();
+        </script>
+      </form>
+    {% else %}
+      {% if mediation.pre_mediation_text %}
+        <div style="white-space:pre-wrap;line-height:1.7">{{ mediation.pre_mediation_text }}</div>
+        {% if participant and not participant.pre_mediation_acknowledged and mediation.phase == 'pre_mediation' and participant.role != 'mediator' %}
+          <form method="POST" style="margin-top:1.2rem">
+            <input type="hidden" name="action" value="ack">
+            <button type="submit" class="btn btn-accent">{{ t.ive_read_understand }}</button>
+          </form>
+        {% elif participant and participant.pre_mediation_acknowledged %}
+          <p class="text-sm" style="margin-top:1.2rem;color:var(--success);font-weight:600">{{ t.acknowledged }}</p>
+        {% endif %}
+      {% else %}
+        <div class="text-muted">{{ t.no_explanation_yet }}</div>
+        {% if participant and participant.role != 'mediator' and mediation.phase == 'pre_mediation' %}
+          <form method="POST" style="margin-top:1rem" action="{{ url_for('mediation.ask_mediator_explanation', mediation_id=mediation.id) }}">
+            <button type="submit" class="btn btn-outline">{{ t.ask_mediator_explanation }}</button>
+          </form>
+          <p class="text-sm text-muted" style="margin-top:0.5rem">{{ t.ask_mediator_explanation_hint }}</p>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:1rem">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.75rem">{{ t.participants }}</h3>
+      {% for p in participants_display %}
+        <div class="flex justify-between items-center" style="padding:0.45rem 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:0.92rem">{{ p.display_name }}</div>
+            <div class="text-sm text-muted">
+              {% for r in p.roles %}{{ t.get('role_' ~ r, r) }}{% if not loop.last %} · {% endif %}{% endfor %}{% if p.is_creator and 'requester' not in p.roles %} · {{ t['role_requester'] }}{% endif %}
+            </div>
+          </div>
+          <div class="text-sm" style="color:{% if p.pre_mediation_acknowledged %}var(--success){% else %}var(--muted){% endif %};font-weight:600">
+            {% if p.pre_mediation_acknowledged %}{{ t.read }}{% else %}{{ t.pending }}{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+      <p class="text-sm text-muted" style="margin-top:0.75rem">
+        {{ t.mediator_advance_once_acknowledged }}
+      </p>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">{{ t.pricing }}</h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+        {{ t.pricing_intro }}
+      </p>
+      <div style="font-weight:600;margin-bottom:0.25rem">
+        {% if (mediation.pricing_type or 'fixed') == 'fixed' %}
+          {{ t.pricing_type_fixed }}: <span style="font-weight:700;font-size:1.2rem;color:var(--charcoal)">{{ '%.2f' % (mediation.price_per_party_cents / 100.0) }} {{ mediation.currency }}</span> <span class="text-sm text-muted" style="font-weight:500">{{ t.per_party }}</span>
+        {% elif (mediation.pricing_type or 'fixed') == 'donation' %}
+          {{ t.pricing_type_donation }}{% if mediation.price_per_party_cents > 0 %} — {{ t.suggested_minimum }}: {{ '%.2f' % (mediation.price_per_party_cents / 100.0) }} {{ mediation.currency }}{% endif %}
+        {% else %}
+          {{ t.pricing_type_probono }}
+        {% endif %}
+      </div>
+      {% if payments_enabled and participant and not is_paid and mediation.phase == 'pre_mediation' and participant.role != 'mediator' %}
+        <form method="POST" style="margin-top:1rem;">
+          <input type="hidden" name="action" value="start_payment">
+          <input type="hidden" name="kind" value="{{ 'standard' if (mediation.pricing_type or 'fixed') == 'fixed' else (mediation.pricing_type or 'fixed') }}">
+          {% if (mediation.pricing_type or 'fixed') == 'probono' %}
+            <p class="text-sm text-muted" style="margin-bottom:0.75rem">{{ t.pricing_intro_probono }}</p>
+            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">{{ t.confirm_probono }}</button>
+          {% elif (mediation.pricing_type or 'fixed') == 'donation' %}
+            <div class="form-group">
+              <label>{{ t.donation_amount_label }}</label>
+              <input type="text" name="donation_extra" placeholder="{{ t.donation_placeholder }}" required>
+            </div>
+            <div class="form-group">
+              <label>{{ t.provider }}</label>
+              <select name="provider">
+                <option value="stripe">{{ t.stripe }}</option>
+                <option value="paypal">{{ t.paypal }}</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">{{ t.proceed_to_payment }}</button>
+          {% else %}
+            <div class="form-group">
+              <label>{{ t.provider }}</label>
+              <select name="provider">
+                <option value="stripe">{{ t.stripe }}</option>
+                <option value="paypal">{{ t.paypal }}</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">{{ t.proceed_to_payment }}</button>
+          {% endif %}
+        </form>
+      {% elif is_paid %}
+        <p class="text-sm" style="margin-top:0.75rem;color:var(--success);font-weight:600">
+          Your payment has been recorded.
+        </p>
+      {% else %}
+        <p class="text-sm text-muted" style="margin-top:0.75rem">
+          Payments will be available once configured by the administrator.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+

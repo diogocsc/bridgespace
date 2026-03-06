@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Proposals — {{ mediation.title }}{% endblock %}
+
+{% block content %}
+{% include "mediation/_phase_nav.html" %}
+
+{% if not mediation.agenda_points %}
+  <div class="card" style="text-align:center;padding:2rem;color:var(--muted)">
+    No agenda points defined. Go back to the Agenda phase first.
+  </div>
+{% else %}
+  {% for ap in mediation.agenda_points %}
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="flex justify-between items-center" style="margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
+      <h3 style="font-size:1rem;font-weight:600">{{ loop.index }}. {{ ap.title }}</h3>
+      <span class="text-sm text-muted">{{ ap.proposals|length }} proposal(s)</span>
+    </div>
+
+    {# Existing proposals #}
+    {% for prop in ap.proposals %}
+    <div style="padding:0.75rem;border-radius:8px;margin-bottom:0.75rem;border:1.5px solid
+      {% if prop.status == 'accepted' %}var(--success)
+      {% elif prop.status == 'rejected' %}var(--danger)
+      {% elif prop.status == 'modified' %}var(--accent)
+      {% else %}var(--border){% endif %};
+      background:{% if prop.status == 'accepted' %}#E8F5EE{% elif prop.status == 'rejected' %}#FDE8E8{% else %}transparent{% endif %}">
+      <div class="flex justify-between items-center" style="margin-bottom:0.4rem;flex-wrap:wrap;gap:0.35rem">
+        <strong class="text-sm">{{ prop.author.display_name or prop.author.username }}</strong>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          {% if prop.reformulated %}
+          <span class="badge" style="font-size:0.7rem;padding:0.1rem 0.4rem;background:#F0F7F4;color:var(--sage-dark)" title="{{ t.ai_reformulation_badge_tooltip | default('This proposal has an AI NVC reformulation') }}">✦ {{ t.ai_reformulation_badge | default('AI reformulation') }}</span>
+          {% endif %}
+          <span class="badge
+            {% if prop.status == 'accepted' %}badge-active
+            {% elif prop.status == 'rejected' %}badge-live
+            {% elif prop.status == 'modified' %}badge-async
+            {% else %}badge-pending{% endif %}">{{ prop.status }}</span>
+          <span class="text-sm text-muted">{{ prop.created_at.strftime('%d %b, %H:%M') }}</span>
+        </div>
+      </div>
+      <p style="margin-bottom:{% if prop.reformulated and prop.reformulated != prop.content %}0.5rem{% else %}0{% endif %}">{{ prop.content }}</p>
+      {% if prop.reformulated and prop.reformulated != prop.content %}
+      <details>
+        <summary class="text-sm" style="color:var(--sage-dark);cursor:pointer">🤝 NVC reformulation</summary>
+        <p style="margin-top:0.4rem;font-style:italic;color:var(--sage-dark);font-size:0.9rem">{{ prop.reformulated }}</p>
+      </details>
+      {% endif %}
+
+      {# Mediator status control #}
+      {% if current_user.id == mediation.mediator_id and mediation.phase == 'proposals' %}
+      <form method="POST" style="margin-top:0.5rem">
+        <input type="hidden" name="action" value="update_status">
+        <input type="hidden" name="proposal_id" value="{{ prop.id }}">
+        <select name="status" onchange="this.form.submit()" style="width:auto;padding:0.3rem 0.6rem;font-size:0.82rem">
+          {% for s in ['pending','accepted','rejected','modified'] %}
+          <option value="{{ s }}" {% if prop.status == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {# Submit new proposal #}
+    {% if mediation.phase == 'proposals' %}
+    <form method="POST" style="display:flex;gap:0.75rem;margin-top:0.5rem">
+      <input type="hidden" name="action" value="add_proposal">
+      <input type="hidden" name="agenda_point_id" value="{{ ap.id }}">
+      <textarea name="content" placeholder="Your proposal for this point…" required
+                style="flex:1;min-height:70px;resize:vertical"></textarea>
+      <button type="submit" class="btn btn-outline" style="align-self:flex-end">Submit</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

@@ -184,20 +184,16 @@
 {% block content %}
 <div class="search-page">
 
-  <h1>Search Similar Cases</h1>
+  <h1>{{ t.search_similar_cases }}</h1>
   <p style="color:var(--muted);font-size:0.93rem;margin-bottom:1.5rem;">
-    Find anonymised agreements from closed mediations that resemble your situation.
-    Use them as inspiration to propose your own terms.
+    {{ t.search_intro }}
   </p>
 
   <!-- Privacy notice -->
   <div class="privacy-banner">
     <span style="font-size:1.1rem;flex-shrink:0;">🔒</span>
     <span>
-      All cases in this library have been <strong>fully anonymised</strong> — names,
-      companies, locations and any identifying details have been removed by AI before
-      indexing. Only cases where <strong>all parties explicitly consented</strong> to
-      sharing are included. Your search query is never stored or shared.
+      {{ t.anonymised_notice }}
     </span>
   </div>
 
@@ -205,19 +201,19 @@
   <div class="search-panel">
     <label style="font-size:0.85rem;font-weight:500;color:var(--muted);
                   display:block;margin-bottom:0.5rem;">
-      Describe your situation
+      {{ t.describe_situation }}
     </label>
     <textarea class="search-textarea" id="search-input" rows="4"
-      placeholder="e.g. I have a dispute with my employer regarding unpaid overtime and wrongful dismissal after 5 years of service. We are looking for a fair settlement that avoids litigation…"
+      placeholder="{{ t.describe_dispute_placeholder }}"
       oninput="updateSearchHints()"></textarea>
     <div class="char-hint" id="char-hint">
-      Describe in at least 20 characters for best results.
+      {{ t.describe_20_chars }}
     </div>
 
     <!-- Filters -->
     <div class="search-filters">
       <select id="type-filter" onchange="filterChanged()">
-        <option value="">All dispute types</option>
+        <option value="">{{ t.all_dispute_types }}</option>
         {% for value, label in dispute_types %}
         <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
@@ -241,11 +237,11 @@
     <div class="search-row">
       <button class="btn btn-accent" id="search-btn"
               onclick="runSearch()" style="flex-shrink:0;">
-        Search cases
+        {{ t.search_cases_btn }}
       </button>
       <button class="btn btn-outline btn-sm" onclick="clearSearch()"
               style="flex-shrink:0;">
-        Clear
+        {{ t.clear_btn }}
       </button>
       <span id="search-status" style="font-size:0.82rem;color:var(--muted);
                                        align-self:center;"></span>
@@ -257,21 +253,26 @@
     <!-- Initial state -->
     <div class="search-state" id="initial-state">
       <div class="icon">⚖️</div>
-      <h3>Find precedents for your case</h3>
-      <p>Describe your dispute above and search our library of<br>
-         anonymised, resolved mediation agreements.</p>
+      <h3>{{ t.find_precedents }}</h3>
+      <p>{{ t.find_precedents_desc }}</p>
     </div>
   </div>
 
 </div>
 
 <!-- Copied toast -->
-<div id="copy-toast">✓ Copied to clipboard</div>
+<div id="copy-toast">✓ {{ t.copied_to_clipboard }}</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+window.__searchT = {
+  findPrecedents: "{{ t.find_precedents|e }}",
+  findPrecedentsDesc: "{{ t.find_precedents_desc|e }}",
+  describe20Chars: "{{ t.describe_20_chars|e }}",
+  somethingWentWrong: "{{ t.something_went_wrong|e }}"
+};
 let activeTag = '';
 let lastResults = [];
 
@@ -279,7 +280,7 @@ function updateSearchHints() {
   const text = document.getElementById('search-input').value;
   const hint = document.getElementById('char-hint');
   if (text.length === 0) {
-    hint.textContent = 'Describe in at least 20 characters for best results.';
+    hint.textContent = window.__searchT.describe20Chars;
     hint.style.color = 'var(--muted)';
   } else if (text.length < 20) {
     hint.textContent = `${20 - text.length} more characters needed.`;
@@ -476,9 +477,8 @@ function clearSearch() {
   document.getElementById('results-area').innerHTML = `
     <div class="search-state" id="initial-state">
       <div class="icon">⚖️</div>
-      <h3>Find precedents for your case</h3>
-      <p>Describe your dispute above and search our library of<br>
-         anonymised, resolved mediation agreements.</p>
+      <h3>${window.__searchT.findPrecedents}</h3>
+      <p>${window.__searchT.findPrecedentsDesc}</p>
     </div>`;
   updateSearchHints();
 }
@@ -487,7 +487,7 @@ function showError(msg) {
   document.getElementById('results-area').innerHTML = `
     <div class="search-state">
       <div class="icon">⚠️</div>
-      <h3>Something went wrong</h3>
+      <h3>${window.__searchT.somethingWentWrong}</h3>
       <p>${escHtml(msg)}</p>
     </div>`;
 }

@@ -8,3 +8,6 @@ anthropic>=0.25
 python-dotenv>=1.0
 eventlet>=0.35
 requests
+stripe
+pytest
+pytest-flask

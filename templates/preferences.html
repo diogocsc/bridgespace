@@ -64,16 +64,16 @@
 
 {% block content %}
 <div class="prefs-wrap">
-  <h1>Preferences</h1>
+  <h1>{{ t.preferences_title }}</h1>
   <p style="color:var(--muted);font-size:.92rem;margin-bottom:2rem;">
-    Manage your account settings, language, and privacy options.
+    {{ t.preferences_intro }}
   </p>
 
   <form method="POST" action="{{ url_for('auth.preferences') }}" novalidate>
 
     <!-- Profile ──────────────────────────────────────── -->
     <div class="card" style="margin-bottom:1.5rem;">
-      <div class="section-title">Profile</div>
+      <div class="section-title">{{ t.profile_section }}</div>
 
       <div class="avatar-row">
         <div class="avatar-circle">{{ user.display_name[0].upper() }}</div>
@@ -86,38 +86,53 @@
       </div>
 
       <div class="form-group">
-        <label for="display_name">Display name</label>
+        <label for="display_name">{{ t.display_name }}</label>
         <input type="text" id="display_name" name="display_name"
                value="{{ user.display_name }}" required>
       </div>
 
       <div class="form-group">
-        <label for="anonymous_alias">Anonymous alias
-          <span style="font-weight:400;color:var(--muted);">
-            &mdash; shown when a case is shared publicly (replaces your name)
-          </span>
+        <label for="anonymous_alias">{{ t.anonymous_alias_label }}
+          <span style="font-weight:400;color:var(--muted);">{{ t.anonymous_alias_hint }}</span>
         </label>
         <input type="text" id="anonymous_alias" name="anonymous_alias"
-               placeholder="e.g. Party A, Blue Team…"
+               placeholder="{{ t.anonymous_alias_placeholder }}"
                value="{{ user.anonymous_alias or '' }}">
       </div>
 
       <div class="form-group">
-        <label for="phone">Mobile number
-          <span style="font-weight:400;">(optional &mdash; for SMS invitations)</span>
+        <label for="phone">{{ t.phone_label }}
+          <span style="font-weight:400;">{{ t.phone_optional_hint }}</span>
         </label>
         <input type="tel" id="phone" name="phone"
-               placeholder="+351 912 345 678"
+               placeholder="{{ t.phone_placeholder }}"
                value="{{ user.phone or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="whatsapp">{{ t.whatsapp_label }}</label>
+        <input type="text" id="whatsapp" name="whatsapp"
+               placeholder="{{ t.whatsapp_placeholder }}"
+               value="{{ user.whatsapp or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="telegram">{{ t.telegram_label }}</label>
+        <input type="text" id="telegram" name="telegram"
+               placeholder="{{ t.telegram_placeholder }}"
+               value="{{ user.telegram or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="signal">{{ t.signal_label }}</label>
+        <input type="text" id="signal" name="signal"
+               placeholder="{{ t.signal_placeholder }}"
+               value="{{ user.signal or '' }}">
       </div>
     </div>
 
     <!-- Language ──────────────────────────────────────── -->
     <div class="card" style="margin-bottom:1.5rem;">
-      <div class="section-title">Preferred language</div>
+      <div class="section-title">{{ t.preferred_language }}</div>
       <p class="text-sm text-muted" style="margin-bottom:1rem;">
-        Posts will be automatically translated into this language.
-        The platform interface uses this language where supported.
+        {{ t.posts_translated_prefs }}
       </p>
       <div class="lang-grid">
         {% for code, name in languages.items() %}
@@ -133,15 +148,33 @@
       </div>
     </div>
 
+    <!-- Mediator role ──────────────────────────────────────── -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="section-title">{{ t.become_mediator_section }}</div>
+      {% if user.role == 'mediator' %}
+        <p class="text-sm text-muted">{{ t.you_are_mediator }}</p>
+      {% else %}
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>{{ t.become_mediator_label }}</strong>
+            <span>{{ t.become_mediator_hint }}</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="register_as_mediator" value="1">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      {% endif %}
+    </div>
+
     <!-- Privacy ──────────────────────────────────────── -->
     <div class="card" style="margin-bottom:1.5rem;">
-      <div class="section-title">Privacy &amp; confidentiality</div>
+      <div class="section-title">{{ t.privacy_section }}</div>
 
       <div class="toggle-row">
         <div class="toggle-info">
-          <strong>Allow anonymised case sharing</strong>
-          <span>Permit platform moderators to use anonymised excerpts for
-                service improvement. Your personal data is never exposed.</span>
+          <strong>{{ t.allow_case_sharing }}</strong>
+          <span>{{ t.allow_case_sharing_hint }}</span>
         </div>
         <label class="toggle-switch">
           <input type="checkbox" name="allow_case_sharing" value="1"
@@ -153,33 +186,39 @@
 
     <!-- Security ──────────────────────────────────────── -->
     <div class="card" style="margin-bottom:1.5rem;">
-      <div class="section-title">Security</div>
+      <div class="section-title">{{ t.security_section }}</div>
 
       <div class="form-group">
-        <label for="current_password">Current password
-          <span style="font-weight:400;">(required to set a new one)</span>
+        <label for="current_password">{{ t.current_password_label }}
+          <span style="font-weight:400;">{{ t.current_password_required }}</span>
         </label>
         <input type="password" id="current_password" name="current_password"
-               placeholder="Leave blank if not changing password">
+               placeholder="{{ t.leave_blank_no_change }}"
+               autocomplete="off"
+               readonly onfocus="this.removeAttribute('readonly')">
       </div>
 
       <div class="form-group">
-        <label for="new_password">New password</label>
+        <label for="new_password">{{ t.new_password_label }}</label>
         <input type="password" id="new_password" name="new_password"
-               placeholder="At least 8 characters" minlength="8">
+               placeholder="{{ t.password_placeholder }}" minlength="8"
+               autocomplete="new-password"
+               readonly onfocus="this.removeAttribute('readonly')">
       </div>
 
       <div class="form-group">
-        <label for="confirm_new_password">Confirm new password</label>
+        <label for="confirm_new_password">{{ t.confirm_new_password_label }}</label>
         <input type="password" id="confirm_new_password"
                name="confirm_new_password"
-               placeholder="Repeat new password">
+               placeholder="{{ t.repeat_new_password_placeholder }}"
+               autocomplete="new-password"
+               readonly onfocus="this.removeAttribute('readonly')">
       </div>
     </div>
 
     <button type="submit" class="btn btn-primary"
             style="width:100%;justify-content:center;">
-      Save preferences
+      {{ t.save_preferences }}
     </button>
   </form>
 

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Metrics: {{ mediator_user.display_name or mediator_user.username }} – Admin{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px; margin: 0 auto;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.25rem">
+    Mediator metrics: {{ mediator_user.display_name or mediator_user.username }}
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    @{{ mediator_user.username }} · {{ mediator_user.email }}
+  </p>
+
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1.25rem">
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">Mediations opened</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--charcoal)">{{ metrics.mediations_opened }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">Agreements reached</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--charcoal)">{{ metrics.agreements_reached }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">Explanation response (avg)</div>
+        <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.explanation_response_display }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">Confirmation response (avg)</div>
+        <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.confirmation_response_display }}</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-sm">
+    <a href="{{ url_for('admin.mediator_metrics_overview') }}">← All mediator metrics</a>
+    &nbsp;·&nbsp;
+    <a href="{{ url_for('admin.dashboard') }}">Admin dashboard</a>
+  </p>
+</div>
+{% endblock %}

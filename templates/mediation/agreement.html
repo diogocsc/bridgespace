@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Agreement — {{ mediation.title }}{% endblock %}
+
+{% block content %}
+{% include "mediation/_phase_nav.html" %}
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem">
+
+  {# Left sidebar #}
+  <div>
+    {# Accepted proposals summary #}
+    <div class="card" style="margin-bottom:1rem">
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">Accepted proposals</h3>
+      {% set ns = namespace(found=false) %}
+      {% for ap in mediation.agenda_points %}
+        {% set accepted = ap.proposals|selectattr('status','equalto','accepted')|list %}
+        {% if accepted %}
+          {% set ns.found = true %}
+          <p style="font-weight:600;font-size:0.85rem;margin-bottom:0.25rem">{{ ap.title }}</p>
+          <ul style="padding-left:1.2rem;margin-bottom:0.75rem">
+            {% for prop in accepted %}
+            <li class="text-sm" style="margin-bottom:0.2rem">{{ prop.content }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endfor %}
+      {% if not ns.found %}
+        <p class="text-sm text-muted">No accepted proposals yet. Go to Proposals to accept some.</p>
+      {% endif %}
+    </div>
+
+    {# AI draft (mediator only) #}
+    {% if current_user.id == mediation.mediator_id %}
+    <div class="card" style="margin-bottom:1rem;border-left:3px solid var(--sage)">
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.5rem">✨ AI Draft</h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">Generate agreement text from all accepted proposals.</p>
+      <form method="POST">
+        <input type="hidden" name="action" value="ai_draft">
+        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;justify-content:center">Draft agreement</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# Signatures #}
+    <div class="card">
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">Signatures</h3>
+      {% for participant in mediation.participants if participant.role != 'mediator' %}
+        {% if participant.user_id %}
+          {% set signed = agreement and (agreement.signatures|selectattr('user_id','equalto',participant.user_id)|list|length > 0) %}
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+            <span style="color:{% if signed %}var(--success){% else %}var(--border){% endif %};font-size:1.1rem">
+              {% if signed %}✔{% else %}○{% endif %}
+            </span>
+            <span class="text-sm">{{ participant.display_name or participant.user.username }}</span>
+          </div>
+        {% endif %}
+      {% endfor %}
+      {% if agreement and agreement.is_signed_by_all %}
+        <p class="text-sm" style="color:var(--success);margin-top:0.5rem;font-weight:600">✔ Fully signed</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Right: agreement editor / viewer #}
+  <div class="card">
+    <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem">Agreement text</h3>
+
+    {% if current_user.id == mediation.mediator_id and mediation.phase == 'agreement' %}
+    <form method="POST" style="margin-bottom:1rem">
+      <input type="hidden" name="action" value="save_draft">
+      <textarea name="content" style="width:100%;min-height:320px;font-family:monospace;font-size:0.88rem"
+                placeholder="Agreement text will appear here after AI draft or manual entry…">{{ agreement.content if agreement else '' }}</textarea>
+      <button type="submit" class="btn btn-outline btn-sm" style="margin-top:0.5rem">💾 Save draft</button>
+    </form>
+    {% else %}
+      {% if agreement %}
+      <pre style="white-space:pre-wrap;font-size:0.88rem;line-height:1.7;padding:1rem;background:var(--cream);border-radius:8px">{{ agreement.content }}</pre>
+      {% else %}
+      <p class="text-muted">No agreement drafted yet.</p>
+      {% endif %}
+    {% endif %}
+
+    {# Sign button #}
+    {% if agreement and mediation.phase == 'agreement' %}
+      {% set already_signed = agreement.signatures|selectattr('user_id','equalto',current_user.id)|list|length > 0 %}
+      {% if already_signed %}
+        <div class="flash flash-success" style="margin-top:1rem">✔ You have signed this agreement.</div>
+      {% else %}
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="action" value="sign">
+          <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center"
+                  onclick="return confirm('Sign the agreement? This cannot be undone.')">
+            ✍ Sign the agreement
+          </button>
+        </form>
+      {% endif %}
+    {% endif %}
+
+    {% if show_consent_search and participant %}
+    {% include 'mediation/_consent_search_share.html' %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

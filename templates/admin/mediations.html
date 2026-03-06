@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Mediations – Admin{% endblock %}
+
+{% block content %}
+<div style="max-width:960px;margin:0 auto">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.25rem">
+    Mediations
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    Overview of recent mediations. Future enhancements can add full CRUD.
+  </p>
+
+  <div class="card">
+    <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+      <thead>
+        <tr style="text-align:left;border-bottom:1px solid var(--border);">
+          <th style="padding:0.5rem 0.25rem;">Title</th>
+          <th style="padding:0.5rem 0.25rem;">Mediator</th>
+          <th style="padding:0.5rem 0.25rem;">Status</th>
+          <th style="padding:0.5rem 0.25rem;">Phase</th>
+          <th style="padding:0.5rem 0.25rem;">Created</th>
+          <th style="padding:0.5rem 0.25rem;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in mediations %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:0.45rem 0.25rem;">{{ m.title }}</td>
+          <td style="padding:0.45rem 0.25rem;">
+            {{ m.mediator.display_name if m.mediator else '—' }}
+          </td>
+          <td style="padding:0.45rem 0.25rem;text-transform:capitalize;">{{ m.status }}</td>
+          <td style="padding:0.45rem 0.25rem;">{% if m.mediation_type == 'unstructured' %}{{ t.mediation_type_unstructured_badge | default('Unstructured') }}{% else %}{{ m.phase }}{% endif %}</td>
+          <td style="padding:0.45rem 0.25rem;">
+            {{ m.created_at.strftime('%Y-%m-%d') if m.created_at }}
+          </td>
+          <td style="padding:0.45rem 0.25rem;">
+            <form method="POST" action="{{ url_for('admin.delete_mediation', mediation_id=m.id) }}" style="display:inline;" onsubmit="return confirm('{{ t.delete_mediation_confirm | default('Delete this mediation? This cannot be undone. The deletion will be recorded in the audit log.') }}');">
+              <button type="submit" class="btn btn-outline btn-sm" style="color:var(--danger, #c00);">{{ t.delete_mediation | default('Delete') }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+

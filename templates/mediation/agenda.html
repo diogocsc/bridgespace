@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Agenda — {{ mediation.title }}{% endblock %}
+
+{% block content %}
+{% include "mediation/_phase_nav.html" %}
+
+<div style="display:grid;grid-template-columns:{% if mediation.phase == 'agenda' and current_user.id == mediation.mediator_id %}1fr 2fr{% else %}1fr{% endif %};gap:1.5rem">
+
+  {% if mediation.phase == 'agenda' and current_user.id == mediation.mediator_id %}
+  <div>
+    {# AI suggest #}
+    <div class="card" style="margin-bottom:1rem;border-left:3px solid var(--sage)">
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.5rem">✨ {{ t.ai_suggestion_title }}</h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">{{ t.suggest_from_perspectives_hint }}</p>
+      <form method="POST">
+        <input type="hidden" name="action" value="ai_suggest">
+        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;justify-content:center">{{ t.suggest_from_perspectives }}</button>
+      </form>
+    </div>
+
+    {# Manual add #}
+    <div class="card">
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">{{ t.add_manually }}</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="add_manual">
+        <div class="form-group">
+          <label>{{ t.agenda_point_title }}</label>
+          <input type="text" name="title" placeholder="{{ t.agenda_point_title_placeholder }}" required>
+        </div>
+        <div class="form-group">
+          <label>{{ t.description_label }}</label>
+          <textarea name="description" placeholder="{{ t.agenda_description_placeholder }}" style="min-height:70px"></textarea>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm" style="width:100%;justify-content:center">{{ t.add_point }}</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div>
+    <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem">
+      {{ t.agenda_points_title }}
+      <span style="color:var(--muted);font-weight:400">({{ mediation.agenda_points|length }})</span>
+    </h3>
+
+    {% if mediation.agenda_points %}
+      {% for ap in mediation.agenda_points %}
+      <div class="card" style="margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:600;margin-bottom:0.2rem">
+            {{ loop.index }}. {{ ap.title }}
+            {% if ap.ai_generated %}<span class="badge badge-async" style="font-size:0.7rem;margin-left:0.4rem">AI</span>{% endif %}
+          </div>
+          {% if ap.description %}<p class="text-sm text-muted">{{ ap.description }}</p>{% endif %}
+        </div>
+        {% if mediation.phase == 'agenda' and current_user.id == mediation.mediator_id %}
+        <form method="POST" style="margin-left:1rem;flex-shrink:0">
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="agenda_point_id" value="{{ ap.id }}">
+          <button type="submit" class="btn btn-sm" style="background:none;color:var(--danger);border:1px solid var(--danger);padding:0.2rem 0.6rem"
+                  onclick="return confirm('Remove this agenda point?')">✕</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card" style="text-align:center;padding:2rem;color:var(--muted)">
+        No agenda points yet.
+        {% if current_user.id == mediation.mediator_id %}Use AI suggestion or add one manually.{% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

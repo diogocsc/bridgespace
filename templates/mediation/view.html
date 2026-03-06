@@ -64,7 +64,10 @@
 <div class="mediation-header">
   <div>
     <h1>{{ mediation.title }}</h1>
-    <div style="display:flex; gap:0.6rem; margin-top:0.5rem; align-items:center;">
+    <div style="display:flex; gap:0.6rem; margin-top:0.5rem; align-items:center; flex-wrap:wrap;">
+      {% if is_unstructured %}
+      <span class="badge" style="background:#E8F0EE;color:var(--sage-dark)">{{ t.mediation_type_unstructured_badge | default('Unstructured') }}</span>
+      {% endif %}
       <span class="badge badge-{{ mediation.mode }}">{{ mediation.mode|capitalize }}</span>
       <span class="badge badge-{{ mediation.status }}">{{ mediation.status|capitalize }}</span>
       <span class="text-sm text-muted">Started {{ mediation.created_at.strftime('%b %d, %Y') }}</span>
@@ -73,18 +76,39 @@
       <p style="margin-top:0.7rem; color:var(--muted); max-width:600px;">{{ mediation.description }}</p>
     {% endif %}
   </div>
-  <div style="display:flex;gap:0.6rem;align-items:center;">
+  <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+  {% if is_unstructured and current_user.id == mediation.mediator_id and mediation.status != 'closed' %}
+  <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('close-mediation-modal').classList.add('active')">
+    {{ t.close_mediation_btn | default('Close mediation') }}
+  </button>
+  {% endif %}
   {% if mediation.status != 'closed' %}
   <a href="{{ url_for('mediation.invite_page', mediation_id=mediation.id) }}"
      class="btn btn-outline btn-sm">
-    + Invite Parties
+    {{ t.invite_parties_btn | default('+ Invite parties') }}
   </a>
   {% endif %}
   <a href="{{ url_for('mediation.dashboard') }}" class="btn btn-outline btn-sm">← Dashboard</a>
-
+  </div>
 </div>
 
+{% if is_unstructured and mediation.status == 'closed' and (mediation.close_outcome or mediation.close_justification) %}
+<div class="card" style="margin-bottom:1.5rem; border-left:3px solid var(--sage); background:#F8FAF9">
+  <h3 style="font-size:0.95rem; margin-bottom:0.5rem">{{ t.mediation_outcome | default('Mediation outcome') }}</h3>
+  {% if mediation.close_outcome %}
+  <p style="margin:0 0 0.5rem; font-weight:600">
+    {% if mediation.close_outcome == 'agreement_reached' %}{{ t.outcome_agreement_reached | default('Agreement reached') }}{% else %}{{ t.outcome_agreement_not_reached | default('Agreement not reached') }}{% endif %}
+  </p>
+  {% endif %}
+  {% if mediation.close_justification %}
+  <p style="margin:0; font-size:0.9rem; color:var(--muted)">{{ mediation.close_justification }}</p>
+  {% endif %}
 </div>
+{% endif %}
+
+{% if show_consent_search and participant %}
+{% include 'mediation/_consent_search_share.html' %}
+{% endif %}
 
 <div id="typing-indicator"></div>
 
@@ -92,12 +116,16 @@
 <div class="posts-feed" id="posts-feed">
 {% for post in posts %}
   {% set is_own = (post.author_id == current_user.id) %}
-  <div class="post-card {{ 'own-post' if is_own else 'other-post' }}" id="post-{{ post.id }}">
+  {% set is_agreement = (is_unstructured and mediation.agreement_post_id == post.id) %}
+  <div class="post-card {{ 'own-post' if is_own else 'other-post' }}{% if is_agreement %} agreement-post{% endif %}" id="post-{{ post.id }}" {% if is_agreement %} style="border-left:3px solid var(--success);background:#E8F5EE" {% endif %}>
     <div class="post-meta">
       <span class="post-author">{{ post.author.display_name }}</span>
       <span class="post-time">{{ post.created_at.strftime('%b %d · %H:%M') }}</span>
+      {% if is_agreement %}
+        <span class="post-version-badge" style="background:var(--success);color:#fff">{{ t.marked_as_agreement | default('Agreement') }}</span>
+      {% endif %}
       {% if post.submitted_version == 'reformulated' %}
-        <span class="post-version-badge">✦ AI-refined</span>
+        <span class="post-version-badge" title="{{ t.ai_reformulation_badge_tooltip | default('This message was reformulated by AI before sending') }}">✦ {{ t.ai_reformulation_badge | default('AI reformulation') }}</span>
       {% endif %}
       {% if post.input_method == 'voice' %}
         <span class="post-version-badge" style="background:#FFF0E8;color:var(--accent);">🎙 Voice</span>
@@ -135,11 +163,18 @@
       </div>
     </div>
     {% endif %}
+    {% if is_unstructured and current_user.id == mediation.mediator_id and mediation.status != 'closed' and not is_agreement %}
+    <form method="POST" style="margin-top:0.75rem;">
+      <input type="hidden" name="action" value="set_agreement">
+      <input type="hidden" name="post_id" value="{{ post.id }}">
+      <button type="submit" class="btn btn-outline btn-sm">{{ t.mark_as_agreement | default('Mark as agreement') }}</button>
+    </form>
+    {% endif %}
   </div>
 {% else %}
   <div class="card" style="text-align:center; color:var(--muted); padding:3rem;">
-    <p style="font-size:1.1rem;">No posts yet.</p>
-    <p class="text-sm mt-1">Be the first to share your perspective below.</p>
+    <p style="font-size:1.1rem;">{{ t.no_posts_yet }}</p>
+    <p class="text-sm mt-1">{{ t.be_first }}</p>
   </div>
 {% endfor %}
 </div>
@@ -147,27 +182,27 @@
 <!-- DRAFT AREA -->
 {% if mediation.status != 'closed' %}
 <div class="draft-area">
-  <h3>Your Post</h3>
-  <textarea id="draft-text" placeholder="Write your message here, or use the microphone button to dictate..." rows="5"
+  <h3>{{ t.your_post }}</h3>
+  <textarea id="draft-text" placeholder="{{ t.write_message_placeholder }}" rows="5"
             oninput="updateCharCount()"></textarea>
-  <div class="char-count"><span id="char-count">0</span> characters</div>
+  <div class="char-count"><span id="char-count">0</span> {{ t.characters }}</div>
 
   <!-- AI Suggestion Panel -->
   <div class="ai-suggestion" id="ai-suggestion">
-    <div class="ai-label">✦ AI Suggestion — Reformulated for constructive dialogue</div>
+    <div class="ai-label">✦ {{ t.ai_suggestion_reformulate }}</div>
     <div id="ai-suggestion-text"></div>
     <div class="ai-actions">
-      <button class="btn btn-primary btn-sm" onclick="acceptAISuggestion()">Use this version</button>
-      <button class="btn btn-outline btn-sm" onclick="dismissAISuggestion()">Keep my own</button>
+      <button class="btn btn-primary btn-sm" onclick="acceptAISuggestion()">{{ t.use_this_version }}</button>
+      <button class="btn btn-outline btn-sm" onclick="dismissAISuggestion()">{{ t.keep_my_own }}</button>
     </div>
   </div>
 
   <div class="draft-actions">
     <button class="btn btn-outline voice-btn" id="voice-btn" onclick="toggleVoice()">
-      🎙 Dictate
+      🎙 {{ t.dictate }}
     </button>
     <button class="btn btn-outline" id="ai-btn" onclick="requestAIFeedback()">
-      ✦ Ask AI Feedback
+      ✦ {{ t.ask_ai_feedback }}
     </button>
     <button class="btn btn-accent" onclick="openSubmitConfirm()" style="margin-left:auto;">
       Submit Post →
@@ -188,6 +223,35 @@
     </div>
   </div>
 </div>
+
+{% if is_unstructured and current_user.id == mediation.mediator_id and mediation.status != 'closed' %}
+<!-- CLOSE MEDIATION MODAL -->
+<div class="modal-overlay" id="close-mediation-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>{{ t.close_mediation_title | default('Close mediation') }}</h3>
+    <p class="text-sm text-muted">{{ t.close_mediation_intro | default('Set the outcome and add a brief justification. All participants will be notified.') }}</p>
+    <form method="POST">
+      <input type="hidden" name="action" value="close_mediation">
+      <div class="form-group">
+        <label for="close_outcome">{{ t.close_outcome_label | default('Outcome') }}</label>
+        <select name="close_outcome" id="close_outcome" required>
+          <option value="">{{ t.select_outcome | default('— Select —') }}</option>
+          <option value="agreement_reached">{{ t.outcome_agreement_reached | default('Agreement reached') }}</option>
+          <option value="agreement_not_reached">{{ t.outcome_agreement_not_reached | default('Agreement not reached') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="close_justification">{{ t.close_justification_label | default('Justification (optional)') }}</label>
+        <textarea name="close_justification" id="close_justification" rows="3" placeholder="{{ t.close_justification_placeholder | default('Brief reason for this outcome…') }}"></textarea>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem">
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('close-mediation-modal').classList.remove('active')">{{ t.cancel | default('Cancel') }}</button>
+        <button type="submit" class="btn btn-accent btn-sm">{{ t.close_mediation_confirm | default('Close mediation') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

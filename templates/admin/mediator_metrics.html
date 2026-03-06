@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Mediator metrics – Admin{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px; margin: 0 auto;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.25rem">
+    Mediator metrics
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    Indicators per mediator: mediations opened, agreements reached, explanation and confirmation response times.
+  </p>
+
+  <div class="card" style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border);text-align:left">
+          <th style="padding:0.75rem;font-size:.8rem;text-transform:uppercase;color:var(--muted)">Mediator</th>
+          <th style="padding:0.75rem;font-size:.8rem;text-transform:uppercase;color:var(--muted)">Mediations opened</th>
+          <th style="padding:0.75rem;font-size:.8rem;text-transform:uppercase;color:var(--muted)">Agreements reached</th>
+          <th style="padding:0.75rem;font-size:.8rem;text-transform:uppercase;color:var(--muted)">Explanation response (avg)</th>
+          <th style="padding:0.75rem;font-size:.8rem;text-transform:uppercase;color:var(--muted)">Confirmation response (avg)</th>
+          <th style="padding:0.75rem;font-size:.8rem;text-transform:uppercase;color:var(--muted)"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in mediators_with_metrics %}
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:0.75rem">
+            <strong>{{ m.user.display_name or m.user.username }}</strong>
+            <span class="text-sm text-muted">@{{ m.user.username }}</span>
+          </td>
+          <td style="padding:0.75rem">{{ m.mediations_opened }}</td>
+          <td style="padding:0.75rem">{{ m.agreements_reached }}</td>
+          <td style="padding:0.75rem">{{ m.explanation_response_display }}</td>
+          <td style="padding:0.75rem">{{ m.confirmation_response_display }}</td>
+          <td style="padding:0.75rem">
+            <a href="{{ url_for('admin.mediator_metrics_detail', user_id=m.user.id) }}" class="btn btn-outline btn-sm">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not mediators_with_metrics %}
+    <p class="text-muted" style="padding:1.5rem;margin:0">No mediator data yet.</p>
+    {% endif %}
+  </div>
+
+  <p class="text-sm" style="margin-top:1rem">
+    <a href="{{ url_for('admin.dashboard') }}">← Back to admin</a>
+  </p>
+</div>
+{% endblock %}
