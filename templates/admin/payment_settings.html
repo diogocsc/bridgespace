@@ -23,6 +23,11 @@
         <label for="stripe_secret_key">Secret key</label>
         <input type="text" id="stripe_secret_key" name="stripe_secret_key" value="{{ stripe_sec }}">
       </div>
+      <div class="form-group">
+        <label for="stripe_webhook_secret">Webhook signing secret</label>
+        <input type="text" id="stripe_webhook_secret" name="stripe_webhook_secret" value="{{ stripe_webhook_secret }}" placeholder="whsec_...">
+        <small class="text-muted">From Stripe Dashboard → Developers → Webhooks. Required to confirm payments via checkout.session.completed.</small>
+      </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
 
@@ -47,8 +52,56 @@
         <label for="platform_commission_percent">Commission (%)</label>
         <input type="number" id="platform_commission_percent" name="platform_commission_percent"
                value="{{ platform_commission_percent }}" min="0" max="100" step="0.1"
-               placeholder="10">
-        <small class="text-muted">Percentage of each paid mediation retained by the platform.</small>
+               placeholder="5">
+        <small class="text-muted">Percentage of each paid mediation retained by the platform (default 5%).</small>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
+
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        Mediator plans & quotas
+      </div>
+      <div class="form-group">
+        <label for="free_quota_default_per_month">Free plan quota (mediations per month)</label>
+        <input type="number" id="free_quota_default_per_month" name="free_quota_default_per_month"
+               value="{{ free_quota_default_per_month }}" min="0" step="1" placeholder="3">
+        <small class="text-muted">Default number of mediations per month available on the free plan (rolled into carry-over if unused).</small>
+      </div>
+      <div class="form-group">
+        <label for="pro_plan_quota_per_month">Professional plan quota (mediations per month)</label>
+        <input type="number" id="pro_plan_quota_per_month" name="pro_plan_quota_per_month"
+               value="{{ pro_plan_quota_per_month }}" min="0" step="1" placeholder="15">
+        <small class="text-muted">Number of mediations per month added by the Professional subscription (in addition to free quota and carry-over).</small>
+      </div>
+      <div class="form-group">
+        <label for="pro_plan_price_eur">Professional plan price (EUR / month)</label>
+        <input type="number" id="pro_plan_price_eur" name="pro_plan_price_eur"
+               value="{{ '%.2f'|format(pro_plan_price_eur) }}" min="0" step="0.1" placeholder="50">
+      </div>
+      <div class="form-group">
+        <label for="enterprise_plan_price_eur">Enterprise plan price (EUR / month)</label>
+        <input type="number" id="enterprise_plan_price_eur" name="enterprise_plan_price_eur"
+               value="{{ '%.2f'|format(enterprise_plan_price_eur) }}" min="0" step="0.1" placeholder="100">
+      </div>
+      <div class="form-group">
+        <label for="bulk_price_per_mediation_eur">Bulk pack price per mediation (EUR)</label>
+        <input type="number" id="bulk_price_per_mediation_eur" name="bulk_price_per_mediation_eur"
+               value="{{ '%.2f'|format(bulk_price_per_mediation_eur) }}" min="0" step="0.1" placeholder="10">
+        <small class="text-muted">Used to calculate the price of mediation bundles that mediators can buy.</small>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
+
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        Email language
+      </div>
+      <div class="form-group">
+        <label for="email_language">Default email language</label>
+        <select id="email_language" name="email_language">
+          <option value="en" {% if email_language == 'en' %}selected{% endif %}>English</option>
+          <option value="pt" {% if email_language == 'pt' %}selected{% endif %}>Português</option>
+        </select>
+        <small class="text-muted">All notification emails (verification, invitations, status updates) will be sent in this language.</small>
       </div>
 
       <button type="submit" class="btn btn-primary" style="margin-top:1rem;">

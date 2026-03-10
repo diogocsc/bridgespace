@@ -105,6 +105,7 @@
           <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;margin:0;">
             <input type="checkbox" name="register_as_mediator" value="1"
                    {% if form_data.get('register_as_mediator') %}checked{% endif %}
+                   id="register-as-mediator-checkbox"
                    style="width:auto;margin-top:0.25rem;accent-color:var(--sage-dark);">
             <span>
               <span style="font-weight:500;">{{ t.register_as_mediator }}</span>
@@ -112,6 +113,46 @@
             </span>
           </label>
         </div>
+      </div>
+
+      <div class="form-group" id="mediator-plan-block" style="margin-bottom:1rem;display:none;">
+        <label style="font-weight:600;">{{ t.mediator_plan_label | default('Choose your mediator plan') }}</label>
+        <p class="text-sm text-muted" style="margin-bottom:0.5rem;">
+          {{ t.mediator_plan_hint | default('You can start on the free plan and upgrade at any time, or choose a paid plan now for higher limits.') }}
+        </p>
+        <div class="lang-grid">
+          <label class="lang-card {% if form_data.get('mediator_plan','free') == 'free' %}selected{% endif %}" id="mediator-plan-free">
+            <input type="radio" name="mediator_plan" value="free"
+                   {% if form_data.get('mediator_plan','free') == 'free' %}checked{% endif %}
+                   onchange="selectMediatorPlan('free')">
+            {{ t.mediator_plan_free | default('Free (3 mediations / month)') }}
+          </label>
+          <label class="lang-card {% if form_data.get('mediator_plan') == 'professional' %}selected{% endif %}" id="mediator-plan-professional">
+            <input type="radio" name="mediator_plan" value="professional"
+                   {% if form_data.get('mediator_plan') == 'professional' %}checked{% endif %}
+                   onchange="selectMediatorPlan('professional')">
+            {{ t.mediator_plan_professional | default('Professional (15 mediations / month, paid)') }}
+          </label>
+          <label class="lang-card {% if form_data.get('mediator_plan') == 'enterprise' %}selected{% endif %}" id="mediator-plan-enterprise">
+            <input type="radio" name="mediator_plan" value="enterprise"
+                   {% if form_data.get('mediator_plan') == 'enterprise' %}checked{% endif %}
+                   onchange="selectMediatorPlan('enterprise')">
+            {{ t.mediator_plan_enterprise | default('Enterprise (unlimited mediations, paid)') }}
+          </label>
+        </div>
+      </div>
+
+      <div class="card" id="mediator-terms-block" style="margin-bottom:1rem;display:none;padding:0.85rem 1rem;">
+        <h3 style="font-size:0.98rem;font-weight:600;margin-bottom:0.5rem;">{{ t.mediator_terms_title }}</h3>
+        <div class="text-sm text-muted" style="max-height:160px;overflow:auto;white-space:pre-wrap;margin-bottom:0.6rem;">
+          {{ t.mediator_terms_body }}
+        </div>
+        <label class="text-sm" style="display:flex;align-items:flex-start;gap:0.4rem;cursor:pointer;">
+          <input type="checkbox" name="accept_mediator_terms" value="1"
+                 {% if form_data.get('accept_mediator_terms') %}checked{% endif %}
+                 style="width:auto;margin-top:0.15rem;accent-color:var(--sage-dark);">
+          <span>{{ t.mediator_terms_accept_label }}</span>
+        </label>
       </div>
 
       <div class="form-group">
@@ -130,6 +171,22 @@
           </label>
           {% endfor %}
         </div>
+      </div>
+
+      {% include 'includes/recaptcha.html' %}
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;margin:0;">
+          <input type="checkbox" name="accept_terms" value="1"
+                 {% if form_data.get('accept_terms') %}checked{% endif %}
+                 style="width:auto;margin-top:0.2rem;accent-color:var(--sage-dark);" required>
+          <span class="text-sm">
+            {{ t.terms_accept_label }}
+            <a href="{{ url_for('legal.terms_mediators') }}" target="_blank" rel="noopener">{{ t.footer_terms }}</a>
+            {{ t.and_word | default('and') }}
+            <a href="{{ url_for('legal.privacy') }}" target="_blank" rel="noopener">{{ t.footer_privacy }}</a>.
+          </span>
+        </label>
       </div>
 
       <button type="submit" class="btn btn-primary"
@@ -152,6 +209,9 @@
 {% endblock %}
 
 {% block scripts %}
+{% if recaptcha_site_key %}
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endif %}
 <script>
 function togglePw(fieldId, eyeId) {
   const inp = document.getElementById(fieldId);
@@ -163,6 +223,25 @@ function togglePw(fieldId, eyeId) {
 function selectLang(code) {
   document.querySelectorAll('.lang-card').forEach(el => el.classList.remove('selected'));
   document.getElementById('lang-label-' + code).classList.add('selected');
+}
+
+function selectMediatorPlan(plan) {
+  ['free','professional','enterprise'].forEach(function(p) {
+    const el = document.getElementById('mediator-plan-' + p);
+    if (el) {
+      if (p === plan) el.classList.add('selected');
+      else el.classList.remove('selected');
+    }
+  });
+}
+
+function toggleMediatorTerms() {
+  const cb = document.getElementById('register-as-mediator-checkbox');
+  const block = document.getElementById('mediator-terms-block');
+  const planBlock = document.getElementById('mediator-plan-block');
+  if (!cb) return;
+  if (block) block.style.display = cb.checked ? '' : 'none';
+  if (planBlock) planBlock.style.display = cb.checked ? '' : 'none';
 }
 
 function checkStrength(pw) {
@@ -199,6 +278,14 @@ document.querySelector('form').addEventListener('submit', function(e) {
     document.getElementById('confirm_password').reportValidity();
   } else {
     document.getElementById('confirm_password').setCustomValidity('');
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const cb = document.getElementById('register-as-mediator-checkbox');
+  if (cb) {
+    cb.addEventListener('change', toggleMediatorTerms);
+    toggleMediatorTerms();
   }
 });
 </script>

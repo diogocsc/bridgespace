@@ -13,6 +13,40 @@
   </div>
 </div>
 
+{% if current_user.is_mediator and mediator_profile %}
+<div class="card" style="margin-bottom:1.5rem">
+  <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">{{ t.mediator_plan_label | default('Your mediator plan') }}</h2>
+  <p class="text-sm text-muted" style="margin-bottom:0.5rem;">
+    {% if mediator_profile.subscription_plan == 'enterprise' and mediator_profile.subscription_status == 'active' %}
+      {{ t.mediator_plan_enterprise | default('Enterprise – unlimited mediations (paid)') }}
+    {% elif mediator_profile.subscription_plan == 'professional' and mediator_profile.subscription_status == 'active' %}
+      {{ t.mediator_plan_professional | default('Professional – 15 mediations / month (paid)') }}
+    {% else %}
+      {{ t.mediator_plan_free | default('Free – 3 mediations / month') }}
+    {% endif %}
+  </p>
+  <p class="text-sm" style="margin-bottom:0.5rem;">
+    {% if mediator_quota_unlimited %}
+      {{ t.mediator_quota_unlimited | default('You currently have unlimited mediation capacity.') }}
+    {% else %}
+      {% if mediator_total_quota is not none %}
+        {{ t.mediator_quota_summary | default('This period:') }}
+        <strong>{{ mediator_total_quota }}</strong> {{ t.mediations_label | default('mediations') }}
+        · {{ t.mediator_quota_used | default('Used') }}: <strong>{{ mediator_total_quota - mediator_remaining_quota }}</strong>
+        · {{ t.mediator_quota_remaining | default('Remaining') }}: <strong>{{ mediator_remaining_quota }}</strong>
+      {% else %}
+        {{ t.mediator_quota_remaining | default('Remaining mediations this period') }}: <strong>{{ mediator_remaining_quota }}</strong>
+      {% endif %}
+    {% endif %}
+  </p>
+  <div class="flex" style="gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
+    <a href="{{ url_for('billing.subscribe_pro') }}" class="btn btn-outline btn-sm">{{ t.mediator_plan_professional | default('Professional – 15 mediations / month (paid)') }}</a>
+    <a href="{{ url_for('billing.subscribe_enterprise') }}" class="btn btn-outline btn-sm">{{ t.mediator_plan_enterprise | default('Enterprise – unlimited mediations (paid)') }}</a>
+    <a href="{{ url_for('billing.buy_pack', pack_size=10) }}" class="btn btn-accent btn-sm">{{ t.mediator_buy_pack_10 | default('Buy 10 extra mediations') }}</a>
+  </div>
+</div>
+{% endif %}
+
 {% macro phase_badge(med) %}
   {% if med.mediation_type == 'unstructured' %}
     <span class="badge" style="background:#E8F0EE;color:var(--sage-dark)">{{ t.mediation_type_unstructured_badge | default('Unstructured') }}</span>

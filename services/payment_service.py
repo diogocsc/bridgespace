@@ -1,23 +1,25 @@
 """
 services/payment_service.py
 
-Lightweight helpers to start payment flows for mediations.
-Stripe: uses hosted Checkout if keys are configured.
-PayPal: placeholder URL (to be wired with JS SDK).
+Payment flows for mediations. Stripe is the only provider.
+When the mediator has a Stripe Connect account, Checkout uses a destination charge
+so payment goes to the mediator's account and the platform keeps the commission.
 """
 
 from __future__ import annotations
 
 import stripe  # type: ignore
-from flask import current_app, url_for
+from flask import url_for
 
 from extensions import db
-from models import MediationPayment
+from models import MediationPayment, MediatorPayoutConfig, MediatorProfile
 from services.settings_service import (
     stripe_secret_key,
     stripe_public_key,
-    paypal_client_id,
     platform_commission_percent,
+    pro_plan_price_eur,
+    enterprise_plan_price_eur,
+    bulk_price_per_mediation_eur,
 )
 
 
@@ -31,16 +33,11 @@ def _init_stripe():
 
 def create_payment_record(mediation, participant, provider: str, kind: str, amount_cents: int, currency: str):
     """
-    Create a payment record. For paid amounts, compute platform commission and mediator payout.
-    Pro-bono: amount_cents 0, platform_commission_cents 0, mediator_payout_cents 0.
+    Create a payment record. Commission logic has been removed; the full amount is recorded,
+    and platform_commission_cents / mediator_payout_cents are no longer used.
     """
     platform_commission_cents = 0
     mediator_payout_cents = None
-    if amount_cents > 0 and getattr(mediation, "mediator_id", None):
-        pct = platform_commission_percent()
-        platform_commission_cents = int(round(amount_cents * pct / 100.0))
-        mediator_payout_cents = amount_cents - platform_commission_cents
-
     pay = MediationPayment(
         mediation_id=mediation.id,
         participant_id=participant.id,
@@ -60,61 +57,10 @@ def create_payment_record(mediation, participant, provider: str, kind: str, amou
 
 def start_stripe_checkout(mediation, participant, kind: str, donation_extra_cents: int = 0) -> str:
     """
-    Returns Stripe Checkout URL, or empty string if Stripe not configured.
+    Deprecated for party payments. Mediation participants no longer pay via platform Checkout;
+    mediators handle payments directly. Kept only for backwards compatibility.
     """
-    if not _init_stripe():
-        return ""
-
-    base = mediation.price_per_party_cents
-    if kind == "probono":
-        amount = 0
-    elif kind == "donation":
-        # By-donation: amount is what the participant states (no base fee)
-        amount = max(donation_extra_cents, 0)
-    else:
-        amount = max(base + donation_extra_cents, 0)
-
-    pay = create_payment_record(mediation, participant, "stripe", kind, amount, mediation.currency)
-
-    success_url = url_for(
-        "mediation.payment_success",
-        mediation_id=mediation.id,
-        payment_id=pay.id,
-        _external=True,
-    )
-    cancel_url = url_for(
-        "mediation.pre_mediation",
-        mediation_id=mediation.id,
-        _external=True,
-    )
-
-    if amount <= 0:
-        # Pro bono: mark as paid immediately, no external checkout
-        pay.status = "paid"
-        db.session.commit()
-        return success_url
-
-    session = stripe.checkout.Session.create(
-        mode="payment",
-        line_items=[
-            {
-                "price_data": {
-                    "currency": mediation.currency.lower(),
-                    "unit_amount": amount,
-                    "product_data": {
-                        "name": f"Mediation {mediation.id} – {kind}",
-                    },
-                },
-                "quantity": 1,
-            }
-        ],
-        success_url=success_url + "&session_id={CHECKOUT_SESSION_ID}",
-        cancel_url=cancel_url,
-    )
-
-    pay.external_id = session.id
-    db.session.commit()
-    return session.url
+    return ""
 
 
 def mark_stripe_paid(payment_id: int):
@@ -125,32 +71,154 @@ def mark_stripe_paid(payment_id: int):
     db.session.commit()
 
 
-def start_paypal_flow(mediation, participant, kind: str, donation_extra_cents: int = 0) -> str:
-    """
-    Placeholder: in a full implementation you would create an order via PayPal API
-    and return its approval URL. For now, we simply mark probono as paid and
-    return an empty string for others if PayPal is not configured.
-    """
-    client_id = paypal_client_id()
-    base = mediation.price_per_party_cents
-    if kind == "probono":
-        amount = 0
-    elif kind == "donation":
-        amount = max(donation_extra_cents, 0)
-    else:
-        amount = max(base + donation_extra_cents, 0)
-    if kind == "probono":
-        pay = create_payment_record(mediation, participant, "paypal", kind, 0, mediation.currency)
-        pay.status = "paid"
-        db.session.commit()
-        return url_for("mediation.payment_success", mediation_id=mediation.id, payment_id=pay.id, _external=True)
+# ---------------------------------------------------------------------------
+# Product and price (blueprint: create product with default_price for one-time payment)
+# ---------------------------------------------------------------------------
 
-    if not client_id:
+def ensure_mediation_stripe_price(mediation) -> bool:
+    """
+    Create a Stripe Product with default price for this mediation (fixed price per party).
+    Persists stripe_product_id and stripe_price_id on the mediation. Used so Checkout
+    can use line_items[].price (blueprint) instead of only price_data.
+    Returns True if product/price are ready, False on error or not applicable.
+    """
+    if not _init_stripe():
+        return False
+    if (mediation.pricing_type or "fixed") != "fixed" or (mediation.price_per_party_cents or 0) <= 0:
+        return False
+    if (mediation.stripe_price_id or "").strip():
+        return True
+    try:
+        product = stripe.Product.create(
+            name=mediation.title[:250] or f"Mediation {mediation.id}",
+            default_price_data={
+                "currency": (mediation.currency or "eur").lower(),
+                "unit_amount": int(mediation.price_per_party_cents),
+            },
+        )
+        price_id = product.default_price
+        if hasattr(price_id, "id"):
+            price_id = price_id.id
+        if not price_id:
+            return False
+        mediation.stripe_product_id = product.id
+        mediation.stripe_price_id = price_id
+        db.session.commit()
+        return True
+    except stripe.StripeError:
+        return False
+
+
+def start_paypal_flow(mediation, participant, kind: str, donation_extra_cents: int = 0) -> str:
+    """PayPal is not used; Stripe is the only payment provider. Returns empty string."""
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Subscription and bulk purchase Checkout for mediators (single platform Stripe account)
+# ---------------------------------------------------------------------------
+
+def start_subscription_checkout(user, plan: str) -> str:
+    """
+    Create a Stripe Checkout Session for a mediator subscription.
+    plan: 'professional' | 'enterprise'
+    """
+    if not _init_stripe():
         return ""
 
-    # Minimal stub – real integration would use JS SDK on the frontend.
-    pay = create_payment_record(mediation, participant, "paypal", kind, amount, mediation.currency)
-    db.session.commit()
-    # For now, just return pre_mediation URL; admin can manually mark as paid.
-    return url_for("mediation.pre_mediation", mediation_id=mediation.id, _external=True)
+    if plan == "professional":
+        amount_eur = pro_plan_price_eur()
+        name = "Professional mediation plan"
+    elif plan == "enterprise":
+        amount_eur = enterprise_plan_price_eur()
+        name = "Enterprise mediation plan"
+    else:
+        return ""
+
+    amount_cents = int(round(amount_eur * 100))
+
+    success_url = url_for(
+        "mediation.payout_settings",
+        _external=True,
+    ) + "?billing=success"
+    cancel_url = url_for(
+        "mediation.payout_settings",
+        _external=True,
+    )
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "eur",
+                        "unit_amount": amount_cents,
+                        "product_data": {"name": name},
+                        "recurring": {"interval": "month"},
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=success_url + "&session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=cancel_url,
+            metadata={
+                "kind": "subscription",
+                "plan": plan,
+                "mediator_user_id": str(user.id),
+            },
+        )
+    except stripe.StripeError:
+        return ""
+
+    return session.url
+
+
+def start_bulk_pack_checkout(user, pack_size: int) -> str:
+    """
+    Create a Stripe Checkout Session for a one-time bulk mediation pack.
+    pack_size: number of mediations to add to carry_over_balance.
+    """
+    if not _init_stripe() or pack_size <= 0:
+        return ""
+
+    price_per_med = bulk_price_per_mediation_eur()
+    amount_cents = int(round(price_per_med * pack_size * 100))
+
+    success_url = url_for(
+        "mediation.payout_settings",
+        _external=True,
+    ) + "?billing=success"
+    cancel_url = url_for(
+        "mediation.payout_settings",
+        _external=True,
+    )
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "eur",
+                        "unit_amount": amount_cents,
+                        "product_data": {
+                            "name": f"Mediation bulk pack ({pack_size} sessions)",
+                        },
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=success_url + "&session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=cancel_url,
+            metadata={
+                "kind": "bulk_pack",
+                "pack_size": str(pack_size),
+                "mediator_user_id": str(user.id),
+            },
+        )
+    except stripe.StripeError:
+        return ""
+
+    return session.url
 

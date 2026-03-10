@@ -16,9 +16,11 @@ from models import User, Mediation, MediationDeletionLog
 from services.settings_service import (
     stripe_public_key,
     stripe_secret_key,
+    stripe_webhook_secret,
     paypal_client_id,
     paypal_client_secret,
     platform_commission_percent,
+    email_language,
     set_setting,
     whatsapp_enabled,
     whatsapp_api_key,
@@ -26,6 +28,11 @@ from services.settings_service import (
     telegram_bot_token,
     signal_enabled,
     signal_api_url,
+    free_quota_default,
+    pro_plan_quota_per_month,
+    pro_plan_price_eur,
+    enterprise_plan_price_eur,
+    bulk_price_per_mediation_eur,
 )
 
 
@@ -64,9 +71,19 @@ def payment_settings():
     if request.method == "POST":
         set_setting("STRIPE_PUBLIC_KEY", request.form.get("stripe_public_key", "").strip())
         set_setting("STRIPE_SECRET_KEY", request.form.get("stripe_secret_key", "").strip())
+        set_setting("STRIPE_WEBHOOK_SECRET", request.form.get("stripe_webhook_secret", "").strip())
         set_setting("PAYPAL_CLIENT_ID", request.form.get("paypal_client_id", "").strip())
         set_setting("PAYPAL_CLIENT_SECRET", request.form.get("paypal_client_secret", "").strip())
-        set_setting("PLATFORM_COMMISSION_PERCENT", request.form.get("platform_commission_percent", "10").strip())
+        set_setting("PLATFORM_COMMISSION_PERCENT", request.form.get("platform_commission_percent", "5").strip())
+        set_setting("FREE_QUOTA_DEFAULT_PER_MONTH", request.form.get("free_quota_default_per_month", "3").strip())
+        set_setting("PRO_PLAN_QUOTA_PER_MONTH", request.form.get("pro_plan_quota_per_month", "15").strip())
+        set_setting("PRO_PLAN_PRICE_EUR", request.form.get("pro_plan_price_eur", "50").strip())
+        set_setting("ENTERPRISE_PLAN_PRICE_EUR", request.form.get("enterprise_plan_price_eur", "100").strip())
+        set_setting("BULK_PRICE_PER_MEDIATION_EUR", request.form.get("bulk_price_per_mediation_eur", "10").strip())
+        lang = (request.form.get("email_language", "") or "").strip().lower()
+        if lang not in ("en", "pt"):
+            lang = "en"
+        set_setting("EMAIL_LANGUAGE", lang)
         try:
             from services.notification import send_payment_config_changed_notification
             send_payment_config_changed_notification()
@@ -79,9 +96,16 @@ def payment_settings():
         "admin/payment_settings.html",
         stripe_pub=stripe_public_key(),
         stripe_sec=stripe_secret_key(),
+        stripe_webhook_secret=stripe_webhook_secret(),
         paypal_id=paypal_client_id(),
         paypal_sec=paypal_client_secret(),
         platform_commission_percent=platform_commission_percent(),
+        email_language=email_language(),
+        free_quota_default_per_month=free_quota_default(),
+        pro_plan_quota_per_month=pro_plan_quota_per_month(),
+        pro_plan_price_eur=pro_plan_price_eur(),
+        enterprise_plan_price_eur=enterprise_plan_price_eur(),
+        bulk_price_per_mediation_eur=bulk_price_per_mediation_eur(),
     )
 
 
@@ -106,6 +130,36 @@ def users():
 
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template("admin/users.html", users=users)
+
+
+@admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+def delete_user(user_id):
+    """Superadmin-only: delete (anonymise) a user profile. Contact details removed; mediation data kept."""
+    _require_admin()
+    if not current_user.is_superadmin:
+        from services.translations import translate
+        lang = getattr(current_user, "preferred_language", "en")
+        flash(translate("only_superadmin_can_delete_users", lang), "danger")
+        return redirect(url_for("admin.users"))
+
+    target = User.query.get_or_404(user_id)
+    if getattr(target, "deleted_at", None):
+        return redirect(url_for("admin.users"))
+
+    from services.user_deletion import anonymise_user
+    anonymise_user(target)
+    db.session.commit()
+
+    from services.translations import translate
+    lang = getattr(current_user, "preferred_language", "en")
+    flash(translate("user_deleted", lang), "success")
+
+    if target.id == current_user.id:
+        from flask_login import logout_user
+        logout_user()
+        return redirect(url_for("auth.login"))
+    return redirect(url_for("admin.users"))
 
 
 @admin_bp.route("/mediations")

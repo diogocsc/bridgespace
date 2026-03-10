@@ -69,9 +69,15 @@
       </h3>
 
       <div class="form-group">
-        <label>{{ t.invitees_label }}</label>
-        <input type="text" name="invitees" placeholder="{{ t.invitees_placeholder }}">
-        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.invitees_hint }}</p>
+        <label>{{ t.invitees_required_label | default(t.invitees_label) }}</label>
+        <input type="text" name="invitees_required" placeholder="{{ t.invitees_placeholder }}">
+        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.invitees_required_hint | default(t.invitees_hint) }}</p>
+      </div>
+
+      <div class="form-group">
+        <label>{{ t.invitees_optional_label | default(t.invitees_label ~ ' — ' ~ t.optional) }}</label>
+        <input type="text" name="invitees_optional" placeholder="{{ t.invitees_placeholder }}">
+        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.invitees_optional_hint | default(t.invitees_hint) }}</p>
       </div>
 
       <div class="form-group">

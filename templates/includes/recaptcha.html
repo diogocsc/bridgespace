@@ -1,0 +1,5 @@
+{% if recaptcha_site_key %}
+<div class="form-group recaptcha-wrap" style="margin-bottom:1rem;">
+  <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+</div>
+{% endif %}

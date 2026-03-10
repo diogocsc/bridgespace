@@ -226,15 +226,14 @@
   <div class="danger-zone" style="margin-top:2rem;">
     <div class="section-title"
          style="color:var(--danger);border-bottom-color:#F5C6C6;">
-      Danger zone
+      {{ t.danger_zone | default('Danger zone') }}
     </div>
     <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">
-      Deleting your account permanently removes all personal information.
-      Active mediations you participate in will continue with your posts anonymised.
+      {{ t.delete_account_intro }}
     </p>
     <button type="button" class="btn btn-danger btn-sm"
-            onclick="confirmDelete()">
-      Delete my account
+            onclick="confirmDelete({{ t.delete_account_confirm | tojson }})">
+      {{ t.delete_account_btn }}
     </button>
   </div>
 </div>
@@ -247,12 +246,12 @@ function selectLang(code) {
   document.getElementById('lang-label-' + code).classList.add('selected');
 }
 
-function confirmDelete() {
-  if (confirm('Are you absolutely sure? This cannot be undone.')) {
+function confirmDelete(msg) {
+  if (confirm(msg)) {
     fetch('{{ url_for("auth.delete_account") }}', { method: 'POST' })
       .then(r => {
         if (r.ok) window.location.href = '{{ url_for("auth.login") }}';
-        else alert('Error deleting account. Please try again.');
+        else alert('{{ t.error_try_again | default("Error. Please try again.") }}');
       });
   }
 }

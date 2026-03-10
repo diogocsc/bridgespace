@@ -17,15 +17,16 @@ from extensions import db, socketio
 from models import (
     Mediation, MediationParticipant, MediationInvitation,
     Perspective, AgendaPoint, Proposal, Agreement, AgreementSignature,
-    Post, User, MediatorPayoutConfig, MediationPayment,
+    Post, User, MediatorPayoutConfig, MediationPayment, MediationSession,
+    MediatorProfile,
 )
 from services.ai_service import reformulate_nvc, extract_agenda_points, draft_agreement
-from services.payment_service import (
-    start_stripe_checkout,
-    start_paypal_flow,
-    mark_stripe_paid,
+from services.mediator_quota_service import (
+    ensure_profile as ensure_mediator_profile,
+    consume_mediation,
+    available_mediations,
 )
-from services.settings_service import payments_enabled_for_mediation, is_participant_paid
+from services.settings_service import payments_enabled_for_mediation, is_participant_paid, platform_commission_percent
 
 mediation_bp = Blueprint('mediation', __name__)
 
@@ -41,7 +42,33 @@ def _require_participant(med):
     if not med.get_participant(current_user):
         abort(403)
 
-def _send_invites(med, invitees_raw, personal_message=''):
+def _maybe_start_pre_mediation(med):
+    """
+    If mediation is in 'new' state and mediator + all needed invitees have accepted,
+    move it to 'open' (pre-mediation can effectively start).
+    """
+    # Only transition from explicit "new" state
+    if getattr(med, "status", None) != "new":
+        return
+    # Mediator must have confirmed availability
+    if not getattr(med, "mediator_confirmed_at", None):
+        return
+    # All required invitations must have a non-pending response (accepted/declined)
+    # Optional invitations do not block the start of pre-mediation.
+    invitations = getattr(med, "invitations", []) or []
+    required_invitations = [
+        inv for inv in invitations
+        if getattr(inv, "is_required", True)
+    ]
+    has_pending = any(
+        getattr(inv, "status", "pending") == "pending"
+        for inv in required_invitations
+    )
+    if has_pending:
+        return
+    med.status = "open"
+
+def _send_invites(med, invitees_raw, personal_message='', required=True):
     """Create MediationInvitation records and dispatch notifications."""
     contacts = [c.strip() for c in invitees_raw.split(',') if c.strip()]
     sent = skipped = 0
@@ -57,6 +84,7 @@ def _send_invites(med, invitees_raw, personal_message=''):
             invited_by_id=current_user.id,
             contact=contact,
             contact_type=contact_type,
+            is_required=required,
             personal_message=personal_message,
         )
         db.session.add(inv)
@@ -156,10 +184,10 @@ def _invite_mediator_and_notify(med, mediator_user):
 @mediation_bp.route('/dashboard')
 @login_required
 def dashboard():
-    # sessions where the user participates
+    # sessions where the user participates (as a party, not as mediator)
     participations = MediationParticipant.query.filter_by(
         user_id=current_user.id, is_active=True
-    ).all()
+    ).filter(MediationParticipant.role != 'mediator').all()
     as_participant = [p.mediation for p in participations]
 
     # sessions where the user is the mediator
@@ -167,10 +195,29 @@ def dashboard():
         mediator_id=current_user.id
     ).all()
 
+    # Mediator plan / quota overview (only for mediators)
+    profile = None
+    remaining = None
+    total_quota = None
+    if getattr(current_user, "is_mediator", False):
+        profile = ensure_mediator_profile(current_user.id)
+        remaining = available_mediations(profile)
+        is_unlimited = remaining == float("inf")
+        if not is_unlimited:
+            from services.settings_service import pro_plan_quota_per_month
+            monthly_quota = profile.free_quota_per_month
+            if profile.subscription_plan == "professional" and profile.subscription_status == "active":
+                monthly_quota += pro_plan_quota_per_month()
+            total_quota = (profile.carry_over_balance or 0) + monthly_quota
+
     return render_template(
         'mediation/dashboard.html',
         as_mediator=as_mediator,
-        as_participant=as_participant
+        as_participant=as_participant,
+        mediator_profile=profile,
+        mediator_remaining_quota=remaining,
+        mediator_total_quota=total_quota,
+        mediator_quota_unlimited=is_unlimited if profile else False,
     )
 
 
@@ -190,7 +237,7 @@ def mediator_metrics():
 @mediation_bp.route('/mediation/payout-settings', methods=['GET', 'POST'])
 @login_required
 def payout_settings():
-    """Mediators configure their Stripe Connect / PayPal payout accounts and view transactions."""
+    """Mediators configure their payout accounts (IBAN / phone / Stripe / PayPal) and view transactions."""
     if not current_user.is_mediator:
         abort(403)
     config = MediatorPayoutConfig.query.filter_by(user_id=current_user.id).first()
@@ -200,6 +247,8 @@ def payout_settings():
             db.session.add(config)
         config.stripe_connect_account_id = request.form.get('stripe_connect_account_id', '').strip() or None
         config.paypal_merchant_id = request.form.get('paypal_merchant_id', '').strip() or None
+        config.iban = request.form.get('iban', '').strip() or None
+        config.mobile_phone = request.form.get('mobile_phone', '').strip() or None
         db.session.commit()
         from services.translations import translate
         lang = getattr(current_user, 'preferred_language', 'en')
@@ -268,6 +317,15 @@ def request_mediation():
             flash('No mediator is available yet. Please contact support or try again later.', 'danger')
             return render_template('mediation/request.html', mediators=mediators)
 
+        # Enforce mediator quota before creating mediation
+        if mediator_user.is_mediator:
+            from services.translations import translate
+            lang = getattr(current_user, 'preferred_language', 'en')
+            profile = ensure_mediator_profile(mediator_user.id)
+            if not consume_mediation(profile):
+                flash(translate('mediator_quota_reached', lang), 'warning')
+                return redirect(url_for('mediation.dashboard'))
+
         med = Mediation(
             title=title,
             description=description,
@@ -276,7 +334,9 @@ def request_mediation():
             mediator_id=mediator_user.id,
             creator_id=current_user.id,
             start_date=start_date,
-            status='pending' if start_date else 'active',
+            # When a user requests a mediation, it starts in state "new"
+            # until mediator and all parties have accepted.
+            status='new',
             phase='pre_mediation',
             mediator_attempt=1,
         )
@@ -302,13 +362,22 @@ def request_mediation():
             pre_mediation_acknowledged=True,
         ))
 
-        if invitees_raw.strip():
-            sent, _ = _send_invites(med, invitees_raw, personal_msg)
-            if sent:
-                flash(f'{sent} invitation(s) sent.', 'info')
+        required_raw = request.form.get('invitees_required', '') or ''
+        optional_raw = request.form.get('invitees_optional', '') or ''
+        total_sent = 0
+        if required_raw.strip():
+            sent_req, _ = _send_invites(med, required_raw, personal_msg, required=True)
+            total_sent += sent_req
+        if optional_raw.strip():
+            sent_opt, _ = _send_invites(med, optional_raw, personal_msg, required=False)
+            total_sent += sent_opt
+        if total_sent:
+            flash(f'{total_sent} invitation(s) sent.', 'info')
 
         db.session.commit()
-        flash('Mediation requested. The mediator has been notified and must confirm within 48 hours.', 'success')
+        from services.translations import translate
+        lang = getattr(current_user, 'preferred_language', 'en')
+        flash(translate('mediation_requested_48h', lang), 'success')
         return redirect(url_for('mediation.session', mediation_id=med.id))
 
     return render_template('mediation/request.html', mediators=mediators)
@@ -323,7 +392,9 @@ def request_mediation():
 @login_required
 def create_mediation():
     if not (current_user.is_mediator or current_user.is_admin):
-        flash('Only registered mediators can create mediations directly.', 'warning')
+        from services.translations import translate
+        lang = getattr(current_user, 'preferred_language', 'en')
+        flash(translate('only_mediators_can_create', lang), 'warning')
         return redirect(url_for('mediation.request_mediation'))
 
     mediators = _active_mediators()
@@ -367,6 +438,15 @@ def create_mediation():
             flash('No mediator is available yet. Please contact support or try again later.', 'danger')
             return render_template('mediation/create.html', mediators=mediators)
 
+        # Enforce mediator quota before creating mediation when mediator is a real mediator
+        if mediator_user.is_mediator:
+            from services.translations import translate
+            lang = getattr(current_user, 'preferred_language', 'en')
+            profile = ensure_mediator_profile(mediator_user.id)
+            if not consume_mediation(profile):
+                flash(translate('mediator_quota_reached', lang), 'warning')
+                return redirect(url_for('mediation.dashboard'))
+
         med = Mediation(
             title=title,
             description=description,
@@ -375,7 +455,8 @@ def create_mediation():
             mediator_id=mediator_user.id,
             creator_id=current_user.id,
             start_date=start_date,
-            status='pending' if start_date else 'active',
+            # Mediator-created mediations start directly as active ("open")
+            status='open',
             phase='pre_mediation',
             mediator_attempt=1,
         )
@@ -400,10 +481,17 @@ def create_mediation():
             pre_mediation_acknowledged=True,
         ))
 
-        if invitees_raw.strip():
-            sent, _ = _send_invites(med, invitees_raw, personal_msg)
-            if sent:
-                flash(f'{sent} invitation(s) sent.', 'info')
+        required_raw = request.form.get('invitees_required', '') or ''
+        optional_raw = request.form.get('invitees_optional', '') or ''
+        total_sent = 0
+        if required_raw.strip():
+            sent_req, _ = _send_invites(med, required_raw, personal_msg, required=True)
+            total_sent += sent_req
+        if optional_raw.strip():
+            sent_opt, _ = _send_invites(med, optional_raw, personal_msg, required=False)
+            total_sent += sent_opt
+        if total_sent:
+            flash(f'{total_sent} invitation(s) sent.', 'info')
 
         db.session.commit()
 
@@ -432,15 +520,26 @@ def invite_page(mediation_id):
         invitees_raw = request.form.get('invitees', '')
         personal_msg = request.form.get('personal_message', '').strip()
 
-        if not invitees_raw.strip():
+        required_raw = request.form.get('invitees_required', '') or ''
+        optional_raw = request.form.get('invitees_optional', '') or ''
+
+        if not required_raw.strip() and not optional_raw.strip():
             flash('Please add at least one email or phone number.', 'danger')
         else:
-            sent, skipped = _send_invites(med, invitees_raw, personal_msg)
+            total_sent = total_skipped = 0
+            if required_raw.strip():
+                sent_req, skipped_req = _send_invites(med, required_raw, personal_msg, required=True)
+                total_sent += sent_req
+                total_skipped += skipped_req
+            if optional_raw.strip():
+                sent_opt, skipped_opt = _send_invites(med, optional_raw, personal_msg, required=False)
+                total_sent += sent_opt
+                total_skipped += skipped_opt
             db.session.commit()
-            msg = f'{sent} invitation(s) sent.'
-            if skipped:
-                msg += f' {skipped} already invited.'
-            flash(msg, 'success' if sent else 'info')
+            msg = f'{total_sent} invitation(s) sent.'
+            if total_skipped:
+                msg += f' {total_skipped} already invited.'
+            flash(msg, 'success' if total_sent else 'info')
         return redirect(url_for('mediation.invite_page', mediation_id=mediation_id))
 
     return render_template('mediation/invite.html', mediation=med)
@@ -479,11 +578,14 @@ def _do_join(med, inv=None):
         user_id=current_user.id,
         role='respondent',
         display_name=current_user.display_name or current_user.username,
+        is_required=getattr(inv, 'is_required', True) if inv else True,
     ))
     if inv:
         inv.status = 'accepted'
         inv.responded_at = datetime.utcnow()
 
+    # Joining as a party may complete the acceptance loop for starting pre-mediation
+    _maybe_start_pre_mediation(med)
     db.session.commit()
     flash(f'You have joined: {med.title}', 'success')
     return redirect(url_for('mediation.session', mediation_id=med.id))
@@ -533,6 +635,11 @@ def view_mediation(mediation_id):
             outcome = request.form.get('close_outcome', '').strip()
             justification = request.form.get('close_justification', '').strip()
             if outcome in ('agreement_reached', 'agreement_not_reached'):
+                if not med.required_payments_complete():
+                    from services.translations import translate
+                    lang = getattr(current_user, 'preferred_language', 'en')
+                    flash(translate('cannot_close_payment_pending', lang), 'warning')
+                    return redirect(url_for('mediation.view_mediation', mediation_id=mediation_id))
                 med.status = 'closed'
                 med.end_date = datetime.utcnow()
                 med.close_outcome = outcome
@@ -624,14 +731,23 @@ def pre_mediation(mediation_id):
                 med.explanation_added_at = dt.utcnow()
             db.session.commit()
             flash('Pre-mediation explanation updated.', 'success')
+            if new_text:
+                try:
+                    from services.notification import send_pre_mediation_confirmation_request
+                    send_pre_mediation_confirmation_request(med)
+                except Exception:
+                    pass
 
         elif current_user.id == med.mediator_id and action == 'set_price':
+            old_pricing_type = getattr(med, 'pricing_type', None) or 'fixed'
             pricing_type = (request.form.get('pricing_type') or 'fixed').strip().lower()
             if pricing_type not in ('fixed', 'donation', 'probono'):
                 pricing_type = 'fixed'
             med.pricing_type = pricing_type
             if pricing_type == 'probono':
                 med.price_per_party_cents = 0
+                med.stripe_product_id = None
+                med.stripe_price_id = None
             else:
                 raw = (request.form.get('price_per_party', '') or '').strip().replace(',', '.')
                 try:
@@ -642,7 +758,23 @@ def pre_mediation(mediation_id):
                 except Exception:
                     flash('Invalid price. Example: 50 or 50.00', 'danger')
                     return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
+                med.stripe_product_id = None
+                med.stripe_price_id = None
             db.session.commit()
+            # If mediator switches to pro bono, refund one mediation slot (pro bono does not count to quota)
+            if old_pricing_type != 'probono' and med.pricing_type == 'probono':
+                try:
+                    profile = MediatorProfile.query.filter_by(user_id=med.mediator_id).first()
+                    if profile and (profile.used_in_period or 0) > 0:
+                        profile.used_in_period = max(0, (profile.used_in_period or 0) - 1)
+                        db.session.commit()
+                except Exception:
+                    pass
+            if (med.pricing_type or '') == 'fixed' and (med.price_per_party_cents or 0) > 0:
+                try:
+                    ensure_mediation_stripe_price(med)
+                except Exception:
+                    pass
             flash('Price and payment type updated.', 'success')
 
         # Parties acknowledge that they read the process (only when mediator has added explanation)
@@ -654,46 +786,62 @@ def pre_mediation(mediation_id):
                 db.session.commit()
                 flash('Thanks — you acknowledged the pre-mediation explanation.', 'success')
 
-        # Participant starts a payment (kind must match mediator's pricing_type)
-        elif action == 'start_payment' and participant:
-            provider = request.form.get('provider', 'stripe')
-            kind = request.form.get('kind', 'standard')
-            pricing_type = getattr(med, 'pricing_type', 'fixed') or 'fixed'
-            # Enforce mediator's payment type
-            if pricing_type == 'probono' and kind != 'probono':
-                kind = 'probono'
-            elif pricing_type == 'fixed' and kind != 'standard':
-                kind = 'standard'
-            elif pricing_type == 'donation' and kind != 'donation':
-                kind = 'donation'
-
-            donation_raw = (request.form.get('donation_extra', '') or '').strip().replace(',', '.')
-            donation_cents = 0
-            if donation_raw:
-                try:
-                    extra = float(donation_raw)
-                    if extra > 0:
-                        donation_cents = int(round(extra * 100))
-                except Exception:
-                    flash('Invalid donation amount.', 'danger')
-                    return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
-            if pricing_type == 'donation' and kind == 'donation' and donation_cents <= 0:
-                flash('Please enter your contribution amount.', 'danger')
+        # Mediator (live mode) creates a scheduled session with start and optional end
+        elif current_user.id == med.mediator_id and action == 'create_session' and med.mode == 'live':
+            title = (request.form.get('session_title') or '').strip()
+            start_str = (request.form.get('session_start') or '').strip()
+            end_str = (request.form.get('session_end') or '').strip()
+            from datetime import datetime as dt
+            try:
+                start_at = dt.strptime(start_str, '%Y-%m-%dT%H:%M')
+                end_at = None
+                if end_str:
+                    end_at = dt.strptime(end_str, '%Y-%m-%dT%H:%M')
+                    if end_at <= start_at:
+                        raise ValueError()
+                sess = MediationSession(
+                    mediation_id=med.id,
+                    created_by_id=current_user.id,
+                    title=title or None,
+                    start_at=start_at,
+                    end_at=end_at,
+                )
+                db.session.add(sess)
+                db.session.commit()
+                flash('Live session scheduled.', 'success')
+            except Exception:
+                flash('Invalid session dates. Please check start and end time.', 'danger')
                 return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
 
-            if not payments_enabled_for_mediation(med):
-                flash('Payments are not configured yet. Please contact the mediator.', 'danger')
+        # Mediator (live mode) updates an existing scheduled session
+        elif current_user.id == med.mediator_id and action == 'update_session' and med.mode == 'live':
+            session_id = request.form.get('session_id', type=int)
+            if not session_id:
+                flash('Invalid session.', 'danger')
                 return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
-
-            if provider == 'paypal':
-                url = start_paypal_flow(med, participant, kind, donation_cents)
-            else:
-                url = start_stripe_checkout(med, participant, kind, donation_cents)
-
-            if not url:
-                flash('Payment provider is not fully configured.', 'danger')
+            sess = MediationSession.query.filter_by(id=session_id, mediation_id=med.id).first()
+            if not sess:
+                flash('Session not found.', 'danger')
                 return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
-            return redirect(url)
+            title = (request.form.get('session_title') or '').strip()
+            start_str = (request.form.get('session_start') or '').strip()
+            end_str = (request.form.get('session_end') or '').strip()
+            from datetime import datetime as dt
+            try:
+                start_at = dt.strptime(start_str, '%Y-%m-%dT%H:%M')
+                end_at = None
+                if end_str:
+                    end_at = dt.strptime(end_str, '%Y-%m-%dT%H:%M')
+                    if end_at <= start_at:
+                        raise ValueError()
+                sess.title = title or None
+                sess.start_at = start_at
+                sess.end_at = end_at
+                db.session.commit()
+                flash('Session updated.', 'success')
+            except Exception:
+                flash('Invalid session dates. Please check start and end time.', 'danger')
+                return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
 
         return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
 
@@ -701,6 +849,12 @@ def pre_mediation(mediation_id):
     paid = False
     if participant:
         paid = is_participant_paid(med.id, participant.id)
+
+    # Sessions (for live mode): order by start time
+    sessions = sorted(
+        getattr(med, "sessions", []) or [],
+        key=lambda s: s.start_at or datetime(1970, 1, 1),
+    )
 
     # Build participant list for display: one row per user, with roles and requester in parallel
     seen_user_ids = set()
@@ -727,13 +881,39 @@ def pre_mediation(mediation_id):
             "pre_mediation_acknowledged": ack,
         })
 
+    # Number of parties obliged to pay (required only); commission/total are based on this
+    required_user_ids = {
+        p.user_id for p in med.participants
+        if p.role != 'mediator' and getattr(p, 'is_required', True)
+    }
+    n_required_parties = len(required_user_ids)
+    participant_is_required = (
+        participant and participant.role != 'mediator'
+        and getattr(participant, 'is_required', True)
+    )
+
+    # Mediator payment details (IBAN / mobile) to show to parties for bank/mobile transfer
+    mediator_payout_details = None
+    if med.mediator_id:
+        payout_config = MediatorPayoutConfig.query.filter_by(user_id=med.mediator_id).first()
+        if payout_config and (payout_config.iban or payout_config.mobile_phone):
+            mediator_payout_details = {
+                "iban": (payout_config.iban or "").strip() or None,
+                "mobile_phone": (payout_config.mobile_phone or "").strip() or None,
+            }
+
     return render_template(
         'mediation/pre_mediation.html',
         mediation=med,
         participant=participant,
         participants_display=participants_display,
+        n_required_parties=n_required_parties,
+        participant_is_required=participant_is_required,
         payments_enabled=payments_enabled_for_mediation(med),
         is_paid=paid,
+        sessions=sessions,
+        platform_commission_percent=platform_commission_percent(),
+        mediator_payout_details=mediator_payout_details,
     )
 
 
@@ -741,14 +921,16 @@ def pre_mediation(mediation_id):
 @login_required
 def ask_mediator_explanation(mediation_id):
     """Participant requests the mediator to add a process explanation; mediator receives an email."""
+    from services.translations import translate
+    lang = getattr(current_user, 'preferred_language', 'en')
     med = _get_med(mediation_id)
     _require_participant(med)
     participant = med.get_participant(current_user)
     if not participant or participant.role == 'mediator':
-        flash('Only parties can request an explanation from the mediator.', 'warning')
+        flash(translate('ask_explanation_only_parties', lang), 'warning')
         return redirect(url_for('mediation.pre_mediation', mediation_id=mediation_id))
     if med.pre_mediation_text and med.pre_mediation_text.strip():
-        flash('An explanation is already available.', 'info')
+        flash(translate('ask_explanation_already_available', lang), 'info')
         return redirect(url_for('mediation.pre_mediation', mediation_id=mediation_id))
     if not med.explanation_requested_at:
         from datetime import datetime as dt
@@ -757,9 +939,9 @@ def ask_mediator_explanation(mediation_id):
     try:
         from services.notification import send_ask_mediator_explanation_email
         send_ask_mediator_explanation_email(med, current_user)
-        flash('The mediator has been notified to add an explanation. You will be able to mark as read once they do.', 'success')
+        flash(translate('ask_explanation_notified', lang), 'success')
     except Exception:
-        flash('We could not send the notification. Please try again or contact the mediator directly.', 'danger')
+        flash(translate('ask_explanation_send_error', lang), 'danger')
     return redirect(url_for('mediation.pre_mediation', mediation_id=mediation_id))
 
 
@@ -780,6 +962,8 @@ def confirm_mediator_availability(mediation_id):
         profile = getattr(current_user, 'mediator_profile', None)
         if profile:
             profile.times_confirmed = (profile.times_confirmed or 0) + 1
+        # Mediator confirmation may complete the acceptance loop for starting pre-mediation
+        _maybe_start_pre_mediation(med)
         db.session.commit()
         flash('Thank you — your availability is confirmed.', 'success')
         return redirect(url_for('mediation.pre_mediation', mediation_id=mediation_id))
@@ -1029,6 +1213,10 @@ def advance_phase(mediation_id):
         med.advance_phase()
         db.session.commit()
         flash(f'Advanced from "{old}" to "{med.phase}".', 'success')
+        if not med.required_payments_complete():
+            from services.translations import translate
+            lang = getattr(current_user, 'preferred_language', 'en')
+            flash(translate('advance_warning_payment_pending', lang), 'warning')
 
     return redirect(url_for('mediation.session', mediation_id=mediation_id))
 
@@ -1043,6 +1231,11 @@ def close_mediation(mediation_id):
     med = _get_med(mediation_id)
     if med.creator_id != current_user.id:
         abort(403)
+    if not med.required_payments_complete():
+        from services.translations import translate
+        lang = getattr(current_user, 'preferred_language', 'en')
+        flash(translate('cannot_close_payment_pending', lang), 'warning')
+        return redirect(url_for('mediation.session', mediation_id=mediation_id))
     med.status   = 'closed'
     med.end_date = datetime.utcnow()
     db.session.commit()

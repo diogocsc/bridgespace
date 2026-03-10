@@ -26,7 +26,13 @@
     {% set phases = ['pre_mediation', 'perspectives'] %}
     {% set cur_idx = 0 if mediation.phase == 'pre_mediation' else 1 %}
   {% else %}
-    {% set phase_labels = [('pre_mediation','0 · Pre-mediation'),('perspectives','1 · Perspectives'),('agenda','2 · Agenda'),('proposals','3 · Proposals'),('agreement','4 · Agreement')] %}
+    {% set phase_labels = [
+      ('pre_mediation', t.phase_pre_mediation | default('0 · Pre-mediation')),
+      ('perspectives', t.phase_perspectives | default('1 · Perspectives')),
+      ('agenda', t.phase_agenda | default('2 · Agenda')),
+      ('proposals', t.phase_proposals | default('3 · Proposals')),
+      ('agreement', t.phase_agreement | default('4 · Agreement')),
+    ] %}
     {% set phases = ['pre_mediation','perspectives','agenda','proposals','agreement'] %}
     {% set cur_idx = phases.index(mediation.phase) if mediation.phase in phases else 0 %}
   {% endif %}

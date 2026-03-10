@@ -13,24 +13,28 @@
   <div class="card" style="margin-bottom:1.5rem">
     <form method="POST">
       <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
-        {{ t.payout_stripe_connect_section | default('Stripe Connect') }}
+        {{ t.payout_bank_section | default('Bank transfer / local payouts') }}
+      </div>
+      <p class="text-sm" style="margin-bottom:0.75rem;padding:0.5rem 0.75rem;background:var(--cream);border-radius:6px;border-left:3px solid var(--sage-dark);">
+        {{ t.payout_iban_mobile_visible_notice | default('The IBAN and mobile number below are visible to the parties in your mediations so they can pay you by bank transfer or mobile payment. Only fill these in if you want to receive payments this way.') }}
+      </p>
+      <div class="form-group">
+        <label for="iban">{{ t.payout_iban_label | default('IBAN for bank transfers') }}</label>
+        <input type="text" id="iban" name="iban"
+               value="{{ config.iban if config else '' }}"
+               placeholder="PT50 0002 0123 1234 5678 9015 4">
+        <small class="text-muted">
+          {{ t.payout_iban_hint | default('The platform will send your payouts to this IBAN up to the 8th day of each month for the previous month.') }}
+        </small>
       </div>
       <div class="form-group">
-        <label for="stripe_connect_account_id">{{ t.payout_stripe_connect_label | default('Stripe Connect account ID') }}</label>
-        <input type="text" id="stripe_connect_account_id" name="stripe_connect_account_id"
-               value="{{ config.stripe_connect_account_id if config else '' }}"
-               placeholder="acct_...">
-        <small class="text-muted">{{ t.payout_stripe_connect_hint | default('From your Stripe Connect Express dashboard.') }}</small>
-      </div>
-
-      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:.75rem 0;">
-        {{ t.payout_paypal_section | default('PayPal') }}
-      </div>
-      <div class="form-group">
-        <label for="paypal_merchant_id">{{ t.payout_paypal_label | default('PayPal merchant ID / email') }}</label>
-        <input type="text" id="paypal_merchant_id" name="paypal_merchant_id"
-               value="{{ config.paypal_merchant_id if config else '' }}"
-               placeholder="{{ t.payout_paypal_placeholder | default('Merchant ID or email for payouts') }}">
+        <label for="mobile_phone">{{ t.payout_mobile_label | default('Mobile phone for mobile payouts') }}</label>
+        <input type="text" id="mobile_phone" name="mobile_phone"
+               value="{{ config.mobile_phone if config else '' }}"
+               placeholder="+351 912 345 678">
+        <small class="text-muted">
+          {{ t.payout_mobile_hint | default('Optional mobile number (e.g. for MB WAY) where payouts may be sent.') }}
+        </small>
       </div>
 
       <button type="submit" class="btn btn-primary" style="margin-top:1rem;">
@@ -43,7 +47,7 @@
     {{ t.payout_transactions_heading | default('Payment transactions') }}
   </h2>
   <p class="text-muted text-sm" style="margin-bottom:0.75rem">
-    {{ t.payout_transactions_intro | default('All payments for mediations you mediate are listed below. Platform commission is deducted; you receive the mediator payout.') }}
+    {{ t.payout_transactions_intro | default('All payments for mediations you mediate are listed below.') }}
   </p>
   {% if transactions %}
   <div class="card" style="overflow-x:auto">
@@ -54,8 +58,6 @@
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_mediation | default('Mediation') }}</th>
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_kind | default('Kind') }}</th>
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_amount | default('Amount') }}</th>
-          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_commission | default('Commission') }}</th>
-          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_your_payout | default('Your payout') }}</th>
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_status | default('Status') }}</th>
         </tr>
       </thead>
@@ -68,8 +70,6 @@
           </td>
           <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{% if tx.kind == 'standard' %}{{ t.payment_kind_standard | default('Fixed price') }}{% elif tx.kind == 'donation' %}{{ t.payment_kind_donation | default('Donation') }}{% elif tx.kind == 'probono' %}{{ t.payment_kind_probono | default('Pro bono') }}{% else %}{{ tx.kind }}{% endif %}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format(tx.amount_cents / 100) }} {{ tx.currency }}</td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format((tx.platform_commission_cents or 0) / 100) }} {{ tx.currency }}</td>
-          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format((tx.mediator_payout_cents or 0) / 100) }} {{ tx.currency }}</td>
           <td style="padding:0.5rem 0.75rem"><span class="badge badge-{{ 'closed' if tx.status == 'paid' else 'pending' }}">{% if tx.status == 'paid' %}{{ t.status_paid | default('Paid') }}{% else %}{{ t.pending | default('Pending') }}{% endif %}</span></td>
         </tr>
         {% endfor %}

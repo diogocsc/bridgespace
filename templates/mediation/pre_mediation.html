@@ -53,15 +53,37 @@
             <button type="submit" class="btn btn-outline btn-sm" style="margin-top:0.5rem;width:100%;justify-content:center">{{ t.update_price }}</button>
           </div>
         </div>
+        <div id="price-commission-summary" class="text-sm text-muted" style="margin-top:0.5rem;display:none;">
+          <div id="price-total-line"></div>
+        </div>
         <script>
           (function(){
             var sel = document.querySelector('select[name="pricing_type"]');
             var row = document.getElementById('price-row');
+            var summary = document.getElementById('price-commission-summary');
+            var priceInput = document.getElementById('price-per-party-input');
             if (!sel || !row) return;
             function toggle(){ row.style.display = row.dataset.show === 'true' ? '' : 'none'; }
             row.dataset.show = sel.value !== 'probono' ? 'true' : 'false';
             toggle();
             sel.addEventListener('change', function(){ row.dataset.show = this.value !== 'probono' ? 'true' : 'false'; toggle(); });
+            if (!priceInput || !summary) return;
+            var nParties = {{ n_required_parties }};
+            var totalLabel = {{ t.total_required_parties_label | tojson }};
+            function updateSummary() {
+              var raw = (priceInput.value || '').replace(',', '.');
+              var val = parseFloat(raw);
+              if (!isFinite(val) || val <= 0 || nParties < 1) {
+                summary.style.display = 'none';
+                return;
+              }
+              var total = val * nParties;
+              var totalText = totalLabel.replace('X', nParties);
+              document.getElementById('price-total-line').textContent = totalText + ': ' + total.toFixed(2) + ' {{ mediation.currency }}';
+              summary.style.display = '';
+            }
+            priceInput.addEventListener('input', updateSummary);
+            updateSummary();
           })();
         </script>
       </form>
@@ -109,6 +131,69 @@
       </p>
     </div>
 
+    {% if mediation.mode == 'live' %}
+    <div class="card" style="margin-bottom:1rem">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">{{ t.live_sessions or 'Live sessions' }}</h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+        {{ t.live_sessions_intro or 'For live mediations, the mediator can schedule real-time sessions with a start and end time.' }}
+      </p>
+      {% if current_user.id == mediation.mediator_id %}
+        <form method="POST" style="margin-bottom:0.75rem">
+          <input type="hidden" name="action" value="create_session">
+          <div class="form-group">
+            <label>{{ t.session_title_optional or 'Title (optional)' }}</label>
+            <input type="text" name="session_title">
+          </div>
+          <div class="form-group">
+            <label>{{ t.session_start_at or 'Session start' }}</label>
+            <input type="datetime-local" name="session_start" required>
+          </div>
+          <div class="form-group">
+            <label>{{ t.session_end_at or 'Session end (optional)' }}</label>
+            <input type="datetime-local" name="session_end">
+          </div>
+          <button type="submit" class="btn btn-outline btn-sm" style="width:100%;justify-content:center">
+            {{ t.add_session or 'Add session' }}
+          </button>
+        </form>
+      {% endif %}
+      {% if sessions %}
+        <ul class="text-sm" style="list-style:none;padding-left:0;margin:0;">
+          {% for s in sessions %}
+          <li style="margin-bottom:0.6rem;">
+            {% if current_user.id == mediation.mediator_id %}
+              <form method="POST" style="display:flex;flex-direction:column;gap:0.25rem;">
+                <input type="hidden" name="action" value="update_session">
+                <input type="hidden" name="session_id" value="{{ s.id }}">
+                <input type="text" name="session_title" value="{{ s.title or '' }}" placeholder="{{ t.session_title_optional or 'Title (optional)' }}">
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                  <div style="flex:1;min-width:160px;">
+                    <label class="text-xs text-muted" style="display:block;margin-bottom:0.1rem;">{{ t.session_start_at or 'Session start' }}</label>
+                    <input type="datetime-local" name="session_start" required value="{{ s.start_at.strftime('%Y-%m-%dT%H:%M') }}">
+                  </div>
+                  <div style="flex:1;min-width:160px;">
+                    <label class="text-xs text-muted" style="display:block;margin-bottom:0.1rem;">{{ t.session_end_at or 'Session end (optional)' }}</label>
+                    <input type="datetime-local" name="session_end" value="{% if s.end_at %}{{ s.end_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                  </div>
+                </div>
+                <div>
+                  <button type="submit" class="btn btn-outline btn-xs">{{ t.update_session or 'Update session' }}</button>
+                </div>
+              </form>
+            {% else %}
+              <strong>{% if s.title %}{{ s.title }}{% else %}{{ s.start_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</strong><br>
+              {{ s.start_at.strftime('%Y-%m-%d %H:%M') }}
+              {% if s.end_at %} — {{ s.end_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-muted" style="margin-top:0.25rem">{{ t.no_sessions_yet or 'No sessions scheduled yet.' }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="card">
       <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">{{ t.pricing }}</h3>
       <p class="text-sm text-muted" style="margin-bottom:0.75rem">
@@ -123,45 +208,24 @@
           {{ t.pricing_type_probono }}
         {% endif %}
       </div>
-      {% if payments_enabled and participant and not is_paid and mediation.phase == 'pre_mediation' and participant.role != 'mediator' %}
-        <form method="POST" style="margin-top:1rem;">
-          <input type="hidden" name="action" value="start_payment">
-          <input type="hidden" name="kind" value="{{ 'standard' if (mediation.pricing_type or 'fixed') == 'fixed' else (mediation.pricing_type or 'fixed') }}">
-          {% if (mediation.pricing_type or 'fixed') == 'probono' %}
-            <p class="text-sm text-muted" style="margin-bottom:0.75rem">{{ t.pricing_intro_probono }}</p>
-            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">{{ t.confirm_probono }}</button>
-          {% elif (mediation.pricing_type or 'fixed') == 'donation' %}
-            <div class="form-group">
-              <label>{{ t.donation_amount_label }}</label>
-              <input type="text" name="donation_extra" placeholder="{{ t.donation_placeholder }}" required>
-            </div>
-            <div class="form-group">
-              <label>{{ t.provider }}</label>
-              <select name="provider">
-                <option value="stripe">{{ t.stripe }}</option>
-                <option value="paypal">{{ t.paypal }}</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">{{ t.proceed_to_payment }}</button>
-          {% else %}
-            <div class="form-group">
-              <label>{{ t.provider }}</label>
-              <select name="provider">
-                <option value="stripe">{{ t.stripe }}</option>
-                <option value="paypal">{{ t.paypal }}</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">{{ t.proceed_to_payment }}</button>
-          {% endif %}
-        </form>
-      {% elif is_paid %}
-        <p class="text-sm" style="margin-top:0.75rem;color:var(--success);font-weight:600">
-          Your payment has been recorded.
-        </p>
-      {% else %}
-        <p class="text-sm text-muted" style="margin-top:0.75rem">
-          Payments will be available once configured by the administrator.
-        </p>
+      {% set base_amount = mediation.price_per_party_cents / 100.0 %}
+      {% set total_amount = base_amount * (n_required_parties or 0) %}
+      {% if total_amount > 0 and (n_required_parties or 0) > 0 %}
+      <p class="text-sm text-muted" style="margin-bottom:0.5rem;">
+        {{ t.total_required_parties_label | replace('X', n_required_parties | string) }}: {{ '%.2f' % total_amount }} {{ mediation.currency }}
+      </p>
+      {% endif %}
+      {% if mediator_payout_details and participant and participant.role != 'mediator' and (mediator_payout_details.iban or mediator_payout_details.mobile_phone) %}
+      <div class="text-sm" style="margin-top:0.75rem;padding:0.75rem;background:var(--cream);border-radius:6px;border:1px solid var(--border);">
+        <div style="font-weight:600;margin-bottom:0.35rem">{{ t.mediator_payment_details_heading | default('Mediator payment details') }}</div>
+        <p class="text-muted" style="margin-bottom:0.5rem">{{ t.mediator_payment_details_intro | default('You can pay the mediator by bank transfer or mobile payment using the details below.') }}</p>
+        {% if mediator_payout_details.iban %}
+        <div style="margin-bottom:0.25rem"><strong>{{ t.payout_iban_label | default('IBAN') }}</strong>: <span style="word-break:break-all">{{ mediator_payout_details.iban }}</span></div>
+        {% endif %}
+        {% if mediator_payout_details.mobile_phone %}
+        <div><strong>{{ t.payout_mobile_label | default('Mobile') }}</strong>: {{ mediator_payout_details.mobile_phone }}</div>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
   </div>

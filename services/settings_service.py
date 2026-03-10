@@ -48,6 +48,11 @@ def stripe_public_key() -> str:
     return get_setting("STRIPE_PUBLIC_KEY", "")
 
 
+def stripe_webhook_secret() -> str:
+    """Signing secret for Stripe webhooks (starts with whsec_). From Stripe Dashboard → Developers → Webhooks."""
+    return get_setting("STRIPE_WEBHOOK_SECRET", "")
+
+
 def paypal_client_id() -> str:
     return get_setting("PAYPAL_CLIENT_ID", "")
 
@@ -57,12 +62,12 @@ def paypal_client_secret() -> str:
 
 
 def platform_commission_percent() -> float:
-    """Platform commission as percentage of each paid mediation (e.g. 10 for 10%)."""
-    raw = get_setting("PLATFORM_COMMISSION_PERCENT", "10")
+    """Platform commission as percentage of each paid mediation (e.g. 5 for 5%)."""
+    raw = get_setting("PLATFORM_COMMISSION_PERCENT", "5")
     try:
         return max(0.0, min(100.0, float(raw)))
     except ValueError:
-        return 10.0
+        return 5.0
 
 
 def whatsapp_enabled() -> bool:
@@ -93,11 +98,35 @@ def payments_enabled_for_mediation(mediation) -> bool:
     """
     Payments are considered enabled if:
     - mediation.payment_required is True
-    - at least one provider is configured
+    - Stripe is configured (Stripe is the only payment provider)
     """
     if not getattr(mediation, "payment_required", True):
         return False
-    return bool(stripe_secret_key() or (paypal_client_id() and paypal_client_secret()))
+    return bool(stripe_secret_key())
+
+
+# ---------------------------------------------------------------------------
+# Mediator plan settings (quotas and prices)
+# ---------------------------------------------------------------------------
+
+def free_quota_default() -> int:
+    return int(get_setting("FREE_QUOTA_DEFAULT_PER_MONTH", "3") or 3)
+
+
+def pro_plan_price_eur() -> float:
+    return float(get_setting("PRO_PLAN_PRICE_EUR", "50") or 50.0)
+
+
+def pro_plan_quota_per_month() -> int:
+    return int(get_setting("PRO_PLAN_QUOTA_PER_MONTH", "15") or 15)
+
+
+def enterprise_plan_price_eur() -> float:
+    return float(get_setting("ENTERPRISE_PLAN_PRICE_EUR", "100") or 100.0)
+
+
+def bulk_price_per_mediation_eur() -> float:
+    return float(get_setting("BULK_PRICE_PER_MEDIATION_EUR", "10") or 10.0)
 
 
 def is_participant_paid(mediation_id: int, participant_id: int) -> bool:
@@ -107,4 +136,20 @@ def is_participant_paid(mediation_id: int, participant_id: int) -> bool:
         .first()
     )
     return bool(paid)
+
+
+def email_language() -> str:
+    """
+    Default language for outgoing emails, configured in the admin panel.
+    Falls back to the UI default language if unset or invalid.
+    """
+    try:
+        from services.translations import DEFAULT_LANGUAGE, LOCALES
+        default_lang = DEFAULT_LANGUAGE
+        allowed = set(LOCALES.keys())
+    except Exception:
+        default_lang = "en"
+        allowed = {"en", "pt"}
+    lang = get_setting("EMAIL_LANGUAGE", default_lang)
+    return lang if lang in allowed else default_lang
 

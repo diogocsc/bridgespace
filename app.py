@@ -31,6 +31,10 @@ def create_app(test_config=None):
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@bridgespace.app')
 
+    # reCAPTCHA v2 for public forms (login, register, forgot/reset password)
+    app.config['RECAPTCHA_SITE_KEY'] = os.environ.get('RECAPTCHA_SITE_KEY', '')
+    app.config['RECAPTCHA_SECRET_KEY'] = os.environ.get('RECAPTCHA_SECRET_KEY', '')
+
     # ⭐ Apply overrides for testing
     if test_config is not None:
         app.config.update(test_config)
@@ -47,7 +51,10 @@ def create_app(test_config=None):
     from models import User
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        u = User.query.get(int(user_id))
+        if u and getattr(u, "deleted_at", None):
+            return None  # deleted users cannot stay logged in
+        return u
 
     @login_manager.unauthorized_handler
     def _unauthorized():
@@ -63,21 +70,32 @@ def create_app(test_config=None):
     from routes.api import api_bp
     from routes.search import search_bp
     from routes.admin import admin_bp
+    from routes.legal import legal_bp
+    from routes.stripe_webhook import stripe_webhook_bp
+    from routes.billing import billing_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(mediation_bp)
+    app.register_blueprint(stripe_webhook_bp)
+    app.register_blueprint(billing_bp)
+    app.register_blueprint(legal_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(search_bp)
     app.register_blueprint(admin_bp)
 
-    # Inject translations and current language into all templates
+    # Inject translations, current language and public config into all templates
     from services.translations import get_translations, DEFAULT_LANGUAGE, LOCALES
     @app.context_processor
     def inject_translations():
         lang = getattr(current_user, "preferred_language", None) if current_user.is_authenticated else DEFAULT_LANGUAGE
         if not lang or lang not in LOCALES:
             lang = DEFAULT_LANGUAGE if DEFAULT_LANGUAGE in LOCALES else "en"
-        return {"t": get_translations(lang), "current_lang": lang}
+        recaptcha_site_key = app.config.get("RECAPTCHA_SITE_KEY", "")
+        return {
+            "t": get_translations(lang),
+            "current_lang": lang,
+            "recaptcha_site_key": recaptcha_site_key,
+        }
 
     # root route
     @app.route('/')

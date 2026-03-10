@@ -16,10 +16,16 @@
     <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:1rem">{{ t.send_invitations }}</h3>
     <form method="POST">
       <div class="form-group">
-        <label>{{ t.invitees_label }}</label>
-        <input type="text" name="invitees"
+        <label>{{ t.invitees_required_label | default(t.invitees_label) }}</label>
+        <input type="text" name="invitees_required"
                placeholder="{{ t.invitees_placeholder }}">
-        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.invitees_hint }}</p>
+        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.invitees_required_hint | default(t.invitees_hint) }}</p>
+      </div>
+      <div class="form-group">
+        <label>{{ t.invitees_optional_label | default(t.invitees_label ~ ' — ' ~ t.optional) }}</label>
+        <input type="text" name="invitees_optional"
+               placeholder="{{ t.invitees_placeholder }}">
+        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.invitees_optional_hint | default(t.invitees_hint) }}</p>
       </div>
       <div class="form-group">
         <label>{{ t.personal_message_optional }}</label>
@@ -66,6 +72,9 @@
         {% elif inv.status == 'declined' %}badge-live
         {% else %}badge-pending{% endif %}">
         {{ inv.status }}
+      </span>
+      <span class="text-xs text-muted" style="margin-left:0.5rem;">
+        {{ (t.invitation_required if inv.is_required else t.invitation_optional) if (inv.is_required is not none) else t.invitation_required }}
       </span>
     </div>
     {% endfor %}

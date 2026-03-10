@@ -11,6 +11,7 @@ def test_register_success(client, app):
         "password": "SuperSecret123",
         "confirm_password": "SuperSecret123",
         "preferred_language": "en",
+        "accept_terms": "1",
     }
 
     resp = client.post("/auth/register", data=data, follow_redirects=True)
@@ -31,6 +32,7 @@ def test_register_default_language_is_portuguese(client, app):
         "display_name": "Default",
         "password": "SuperSecret123",
         "confirm_password": "SuperSecret123",
+        "accept_terms": "1",
         # omit preferred_language to test default
     }
     resp = client.post("/auth/register", data=data, follow_redirects=True)
@@ -51,6 +53,8 @@ def test_register_as_mediator(client, app):
         "confirm_password": "SuperSecret123",
         "preferred_language": "en",
         "register_as_mediator": "1",
+        "accept_terms": "1",
+        "accept_mediator_terms": "1",
     }
     resp = client.post("/auth/register", data=data, follow_redirects=True)
     assert resp.status_code == 200
@@ -61,6 +65,30 @@ def test_register_as_mediator(client, app):
         profile = MediatorProfile.query.filter_by(user_id=user.id).first()
         assert profile is not None
         assert profile.is_active is True
+
+
+def test_register_mediator_with_paid_plan_redirects_to_billing(client, app):
+    """When mediator selects a paid plan at registration, they are redirected to the billing subscribe flow."""
+    # Professional plan (using default test client)
+    data = {
+        "email": "mediatorpro@example.com",
+        "username": "mediatorpro",
+        "display_name": "Mediator Pro",
+        "password": "SuperSecret123",
+        "confirm_password": "SuperSecret123",
+        "preferred_language": "en",
+        "register_as_mediator": "1",
+        "mediator_plan": "professional",
+        "accept_terms": "1",
+        "accept_mediator_terms": "1",
+    }
+    resp = client.post("/auth/register", data=data, follow_redirects=False)
+    # Should redirect to billing.subscribe_pro
+    assert resp.status_code in (302, 303)
+    assert "/billing/subscribe/pro" in resp.headers.get("Location", "")
+
+    # NOTE: Enterprise plan path is covered by the same view logic; re-registering with a
+    # logged-in client would be redirected to '/', so we only assert Professional here.
 
 
 def test_preferences_become_mediator(client, app, user):

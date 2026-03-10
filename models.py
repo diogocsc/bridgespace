@@ -50,6 +50,7 @@ class User(UserMixin, db.Model):
     reset_token_expiry   = db.Column(db.DateTime)
     last_seen            = db.Column(db.DateTime)
     created_at           = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted_at           = db.Column(db.DateTime, nullable=True)  # set when profile is deleted; contact details cleared, mediation data kept
 
     def generate_verification_token(self):
         self.verification_token = secrets.token_urlsafe(32)
@@ -96,7 +97,7 @@ class Mediation(db.Model):
     mediator_escalated_at  = db.Column(db.DateTime)  # when admins were notified after 2nd timeout
     creator_id             = db.Column(db.Integer, db.ForeignKey('user.id'))   # alias used by search.py
     is_live      = db.Column(db.Boolean, default=False)
-    status       = db.Column(db.String(20), default='open')          # open / closed
+    status       = db.Column(db.String(20), default='open')          # new | open | closed
     phase        = db.Column(db.String(20), default='pre_mediation', nullable=False)
     mode         = db.Column(db.String(10), default='async')     # 'async' | 'live'
     start_date   = db.Column(db.DateTime)
@@ -113,6 +114,8 @@ class Mediation(db.Model):
     pricing_type = db.Column(db.String(20), default='fixed')  # fixed | donation | probono (set by mediator in pre-mediation)
     currency = db.Column(db.String(3), default="EUR")
     payment_required = db.Column(db.Boolean, default=True)
+    stripe_product_id = db.Column(db.String(120), nullable=True)   # Stripe Product (for fixed price)
+    stripe_price_id = db.Column(db.String(120), nullable=True)   # Stripe Price default_price (for Checkout line_items)
     # Unstructured: agreement is a specific post; close outcome + justification
     agreement_post_id   = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=True)
     close_outcome       = db.Column(db.String(30), nullable=True)   # 'agreement_reached' | 'agreement_not_reached'
@@ -141,6 +144,7 @@ class Mediation(db.Model):
     )
     agreement     = db.relationship('Agreement', back_populates='mediation', uselist=False, cascade='all, delete-orphan')
     payments      = db.relationship('MediationPayment', back_populates='mediation', cascade='all, delete-orphan')
+    sessions      = db.relationship('MediationSession', back_populates='mediation', order_by='MediationSession.start_at', cascade='all, delete-orphan')
 
     def get_participant(self, user):
         return next((p for p in self.participants if p.user_id == user.id), None)
@@ -159,23 +163,8 @@ class Mediation(db.Model):
     def can_advance(self):
         if self.phase == 'pre_mediation':
             # All active participants should acknowledge the pre-mediation explanation
-            all_ack = all(p.pre_mediation_acknowledged for p in self.participants if p.is_active)
-            if not all_ack:
-                return False
-            # Payments are enforced only if enabled/configured; see services.settings_service
-            try:
-                from services.settings_service import payments_enabled_for_mediation, is_participant_paid
-                if payments_enabled_for_mediation(self):
-                    return all(
-                        (not p.is_active)
-                        or (p.role == "mediator")
-                        or is_participant_paid(self.id, p.id)
-                        for p in self.participants
-                    )
-            except Exception:
-                # Never block phase advancement due to settings lookup failure
-                return all_ack
-            return True
+            # Payment is not required to advance phase; it is required only to close the mediation
+            return all(p.pre_mediation_acknowledged for p in self.participants if p.is_active)
         if self.phase == 'perspectives':
             return len(self.perspectives) >= 2
         if self.phase == 'agenda':
@@ -183,6 +172,22 @@ class Mediation(db.Model):
         if self.phase == 'proposals':
             return all(len(ap.proposals) >= 1 for ap in self.agenda_points)
         return False
+
+    def required_payments_complete(self):
+        """True if payment is not enabled, or all required parties have paid. Used to allow closing the mediation."""
+        try:
+            from services.settings_service import payments_enabled_for_mediation, is_participant_paid
+            if not payments_enabled_for_mediation(self):
+                return True
+            return all(
+                (not p.is_active)
+                or (p.role == "mediator")
+                or (not getattr(p, "is_required", True))
+                or is_participant_paid(self.id, p.id)
+                for p in self.participants
+            )
+        except Exception:
+            return True
 
 
 class MediationParticipant(db.Model):
@@ -193,6 +198,7 @@ class MediationParticipant(db.Model):
     display_name  = db.Column(db.String(100))
     role          = db.Column(db.String(20), default='participant')  # requester | respondent | participant
     is_active     = db.Column(db.Boolean, default=True)
+    is_required   = db.Column(db.Boolean, default=True)   # True = obliged to pay (fixed price); False = optional, not charged
     pre_mediation_acknowledged = db.Column(db.Boolean, default=False)
     consent_search_share = db.Column(db.Boolean, nullable=True)  # None=not asked; True/False=consent for this mediation in search (when closed with agreement)
     joined_at     = db.Column(db.DateTime, default=datetime.utcnow)
@@ -319,6 +325,23 @@ class Agreement(db.Model):
         return participant_ids.issubset(signed_ids)
 
 
+class MediationSession(db.Model):
+    """
+    Scheduled live session within a mediation (used in synchronous/live mode).
+    Mediator creates one or more sessions with a start and optional end time.
+    """
+    id           = db.Column(db.Integer, primary_key=True)
+    mediation_id = db.Column(db.Integer, db.ForeignKey('mediation.id'), nullable=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title        = db.Column(db.String(200))
+    start_at     = db.Column(db.DateTime, nullable=False)
+    end_at       = db.Column(db.DateTime)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    mediation   = db.relationship('Mediation', back_populates='sessions')
+    created_by  = db.relationship('User')
+
+
 class AgreementSignature(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     agreement_id = db.Column(db.Integer, db.ForeignKey('agreement.id'), nullable=False)
@@ -345,6 +368,7 @@ class MediationInvitation(db.Model):
     invited_by_id  = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     contact        = db.Column(db.String(200), nullable=False)   # email or phone
     contact_type   = db.Column(db.String(10), default='email')   # 'email' | 'phone'
+    is_required    = db.Column(db.Boolean, default=True)         # True = needed party, False = optional
     token          = db.Column(db.String(100), unique=True, nullable=False,
                                default=lambda: _secrets.token_urlsafe(32))
     status         = db.Column(db.String(20), default='pending')  # pending | accepted | declined
@@ -399,11 +423,24 @@ class MediatorProfile(db.Model):
     id               = db.Column(db.Integer, primary_key=True)
     user_id          = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
     bio              = db.Column(db.Text, default="")
+    terms_accepted_at = db.Column(db.DateTime, nullable=True)
     is_active        = db.Column(db.Boolean, default=True)
     selection_count  = db.Column(db.Integer, default=0)   # times offered a mediation
     times_confirmed  = db.Column(db.Integer, default=0) # times accepted within 48h
     ranking          = db.Column(db.Float, default=100.0) # higher = more likely to be chosen on 2nd tentative
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Quotas and subscriptions for mediations
+    free_quota_per_month = db.Column(db.Integer, default=3, nullable=False)
+    carry_over_balance   = db.Column(db.Integer, default=0, nullable=False)
+
+    subscription_plan    = db.Column(db.String(20), default="free", nullable=False)  # free | professional | enterprise
+    subscription_stripe_customer_id = db.Column(db.String(120))
+    subscription_stripe_id          = db.Column(db.String(120))
+    subscription_status   = db.Column(db.String(20), default="inactive")  # inactive | active | past_due | canceled
+    current_period_start  = db.Column(db.DateTime)
+    current_period_end    = db.Column(db.DateTime)
+    used_in_period        = db.Column(db.Integer, default=0, nullable=False)
 
     user = db.relationship('User', backref=db.backref('mediator_profile', uselist=False))
 
@@ -432,6 +469,8 @@ class MediatorPayoutConfig(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, unique=True)
     stripe_connect_account_id = db.Column(db.String(120), nullable=True)  # Stripe Connect Express account id
     paypal_merchant_id = db.Column(db.String(120), nullable=True)  # or PayPal merchant/email for payouts
+    iban = db.Column(db.String(34), nullable=True)  # IBAN for bank transfers
+    mobile_phone = db.Column(db.String(50), nullable=True)  # Mobile number for local payouts (e.g. MB WAY)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

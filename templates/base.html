@@ -32,7 +32,10 @@
     min-height: 100vh;
     font-size: 15px;
     line-height: 1.6;
+    display: flex;
+    flex-direction: column;
   }
+  main { flex: 1; }
   a { color: var(--sage-dark); text-decoration: none; }
   a:hover { color: var(--accent); }
 
@@ -156,6 +159,25 @@
     padding: 0;
     line-height: 1;
   }
+
+  /* Footer */
+  .site-footer {
+    margin-top: auto;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border);
+    background: var(--warm-white);
+    font-size: 0.88rem;
+  }
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .footer-links a { color: var(--sage-dark); }
+  .footer-sep { color: var(--border); margin: 0 0.15rem; }
+  .footer-contact { color: var(--muted); }
+  .footer-address { margin-top: 0.5rem; }
 </style>
 {% block head %}{% endblock %}
 </head>
@@ -210,6 +232,21 @@
     {% block content %}{% endblock %}
   </div>
 </main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-links">
+      <a href="{{ url_for('legal.privacy') }}">{{ t.footer_privacy }}</a>
+      <span class="footer-sep">·</span>
+      <a href="{{ url_for('legal.terms_mediators') }}">{{ t.footer_terms }}</a>
+      <span class="footer-sep">·</span>
+      <span class="footer-contact">{{ t.footer_contact }}: <a href="mailto:hello@diogocordeiro.pt">hello@diogocordeiro.pt</a></span>
+    </div>
+    <div class="footer-address text-sm text-muted">
+      {{ t.footer_address }}
+    </div>
+  </div>
+</footer>
 
 <script>
   let _googleTranslateLoaded = false;

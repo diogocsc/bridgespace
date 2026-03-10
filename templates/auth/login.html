@@ -117,6 +117,8 @@
         </a>
       </div>
 
+      {% include 'includes/recaptcha.html' %}
+
       <button
         type="submit"
         class="btn btn-primary"
@@ -148,6 +150,9 @@
 {% endblock %}
 
 {% block scripts %}
+{% if recaptcha_site_key %}
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endif %}
 <script>
 function togglePw() {
   const inp = document.getElementById('password');

@@ -35,6 +35,10 @@ def ensure_schema():
                 logger.warning("Applying migration: add user.%s", col)
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE user ADD COLUMN {col} VARCHAR(80)"))
+        if "deleted_at" not in cols:
+            logger.warning("Applying migration: add user.deleted_at")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE user ADD COLUMN deleted_at DATETIME"))
 
     # --- mediator_profile table (new) + additive ---
     if not insp.has_table("mediator_profile"):
@@ -52,6 +56,15 @@ def ensure_schema():
                 logger.warning("Applying migration: add mediator_profile.%s", col)
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE mediator_profile ADD COLUMN {col} {typ}"))
+        if "terms_accepted_at" not in mp_cols:
+            logger.warning("Applying migration: add mediator_profile.terms_accepted_at")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN terms_accepted_at DATETIME"
+                    )
+                )
 
     # --- mediation additive fields ---
     if insp.has_table("mediation"):
@@ -102,6 +115,12 @@ def ensure_schema():
             if "close_justification" not in cols:
                 logger.warning("Applying migration: add mediation.close_justification")
                 conn.execute(text("ALTER TABLE mediation ADD COLUMN close_justification TEXT"))
+            if "stripe_product_id" not in cols:
+                logger.warning("Applying migration: add mediation.stripe_product_id")
+                conn.execute(text("ALTER TABLE mediation ADD COLUMN stripe_product_id VARCHAR(120)"))
+            if "stripe_price_id" not in cols:
+                logger.warning("Applying migration: add mediation.stripe_price_id")
+                conn.execute(text("ALTER TABLE mediation ADD COLUMN stripe_price_id VARCHAR(120)"))
 
     # --- perspective additive fields ---
     if insp.has_table("perspective"):
@@ -136,6 +155,28 @@ def ensure_schema():
                         "ADD COLUMN consent_search_share BOOLEAN"
                     )
                 )
+        if "is_required" not in cols:
+            logger.warning("Applying migration: add mediation_participant.is_required")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediation_participant "
+                        "ADD COLUMN is_required BOOLEAN NOT NULL DEFAULT 1"
+                    )
+                )
+
+    # --- mediation_invitation additive fields ---
+    if insp.has_table("mediation_invitation"):
+        cols = {c["name"] for c in insp.get_columns("mediation_invitation")}
+        if "is_required" not in cols:
+            logger.warning("Applying migration: add mediation_invitation.is_required")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediation_invitation "
+                        "ADD COLUMN is_required BOOLEAN NOT NULL DEFAULT 1"
+                    )
+                )
 
     # --- site_setting table (new) ---
     if not insp.has_table("site_setting"):
@@ -148,6 +189,111 @@ def ensure_schema():
         logger.warning("Applying migration: create mediator_payout_config")
         from models import MediatorPayoutConfig  # noqa: F401
         db.metadata.create_all(engine, tables=[db.metadata.tables["mediator_payout_config"]])
+    else:
+        cols = {c["name"] for c in insp.get_columns("mediator_payout_config")}
+        if "iban" not in cols:
+            logger.warning("Applying migration: add mediator_payout_config.iban")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_payout_config "
+                        "ADD COLUMN iban VARCHAR(34)"
+                    )
+                )
+        if "mobile_phone" not in cols:
+            logger.warning("Applying migration: add mediator_payout_config.mobile_phone")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_payout_config "
+                        "ADD COLUMN mobile_phone VARCHAR(50)"
+                    )
+                )
+
+    # --- mediator_profile additive fields (quotas/subscriptions) ---
+    if insp.has_table("mediator_profile"):
+        cols = {c["name"] for c in insp.get_columns("mediator_profile")}
+        if "free_quota_per_month" not in cols:
+            logger.warning("Applying migration: add mediator_profile.free_quota_per_month")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN free_quota_per_month INTEGER NOT NULL DEFAULT 3"
+                    )
+                )
+        if "carry_over_balance" not in cols:
+            logger.warning("Applying migration: add mediator_profile.carry_over_balance")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN carry_over_balance INTEGER NOT NULL DEFAULT 0"
+                    )
+                )
+        if "subscription_plan" not in cols:
+            logger.warning("Applying migration: add mediator_profile.subscription_plan")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN subscription_plan VARCHAR(20) NOT NULL DEFAULT 'free'"
+                    )
+                )
+        if "subscription_stripe_customer_id" not in cols:
+            logger.warning("Applying migration: add mediator_profile.subscription_stripe_customer_id")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN subscription_stripe_customer_id VARCHAR(120)"
+                    )
+                )
+        if "subscription_stripe_id" not in cols:
+            logger.warning("Applying migration: add mediator_profile.subscription_stripe_id")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN subscription_stripe_id VARCHAR(120)"
+                    )
+                )
+        if "subscription_status" not in cols:
+            logger.warning("Applying migration: add mediator_profile.subscription_status")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN subscription_status VARCHAR(20) NOT NULL DEFAULT 'inactive'"
+                    )
+                )
+        if "current_period_start" not in cols:
+            logger.warning("Applying migration: add mediator_profile.current_period_start")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN current_period_start DATETIME"
+                    )
+                )
+        if "current_period_end" not in cols:
+            logger.warning("Applying migration: add mediator_profile.current_period_end")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN current_period_end DATETIME"
+                    )
+                )
+        if "used_in_period" not in cols:
+            logger.warning("Applying migration: add mediator_profile.used_in_period")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_profile "
+                        "ADD COLUMN used_in_period INTEGER NOT NULL DEFAULT 0"
+                    )
+                )
 
     # --- mediation_payment table (new) ---
     if not insp.has_table("mediation_payment"):
@@ -189,4 +335,10 @@ def ensure_schema():
         logger.warning("Applying migration: create mediation_deletion_log")
         from models import MediationDeletionLog  # noqa: F401
         db.metadata.create_all(engine, tables=[db.metadata.tables["mediation_deletion_log"]])
+
+    # --- mediation_session table (new) ---
+    if not insp.has_table("mediation_session"):
+        logger.warning("Applying migration: create mediation_session")
+        from models import MediationSession  # noqa: F401
+        db.metadata.create_all(engine, tables=[db.metadata.tables["mediation_session"]])
 

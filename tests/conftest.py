@@ -27,6 +27,9 @@ TEST_CONFIG = {
     "SQLALCHEMY_TRACK_MODIFICATIONS": False,
     "WTF_CSRF_ENABLED": False,
     "MAIL_SUPPRESS_SEND": True,
+    # Ensure captcha is disabled in tests regardless of .env
+    "RECAPTCHA_SITE_KEY": "",
+    "RECAPTCHA_SECRET_KEY": "",
 }
 
 

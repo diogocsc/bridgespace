@@ -84,14 +84,15 @@ def test_session_redirect_structured_to_pre_mediation(app, client):
 
 
 def test_session_redirect_unstructured_to_view(app, client):
-    """Unstructured mediation: opening session redirects to view (posts)."""
+    """Unstructured mediation: opening session redirects to current phase (pre_mediation when in pre_mediation)."""
     user = create_user(app, email="unstruct@example.com", username="unstruct", role="mediator")
     med = create_mediation_with_participant(app, user["user_id"], user["user_id"], mediation_type="unstructured")
     login(client, user["email"], user["password"])
 
     resp = client.get(f"/mediation/{med['mediation_id']}", follow_redirects=False)
     assert resp.status_code in (302, 303)
-    assert "/view" in resp.headers["Location"]
+    # For unstructured mediations in pre_mediation phase we now redirect to pre_mediation
+    assert "/pre_mediation" in resp.headers["Location"] or "pre_mediation" in resp.headers["Location"]
 
 
 def test_view_mediation_unstructured_returns_200(app, client):
