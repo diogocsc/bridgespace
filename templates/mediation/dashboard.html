@@ -40,9 +40,21 @@
     {% endif %}
   </p>
   <div class="flex" style="gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
-    <a href="{{ url_for('billing.subscribe_pro') }}" class="btn btn-outline btn-sm">{{ t.mediator_plan_professional | default('Professional – 15 mediations / month (paid)') }}</a>
-    <a href="{{ url_for('billing.subscribe_enterprise') }}" class="btn btn-outline btn-sm">{{ t.mediator_plan_enterprise | default('Enterprise – unlimited mediations (paid)') }}</a>
-    <a href="{{ url_for('billing.buy_pack', pack_size=10) }}" class="btn btn-accent btn-sm">{{ t.mediator_buy_pack_10 | default('Buy 10 extra mediations') }}</a>
+    {% if mediator_profile.subscription_plan == 'professional' and mediator_profile.subscription_status == 'active' %}
+      <span class="btn btn-outline btn-sm" style="opacity:0.8;cursor:default;pointer-events:none">{{ t.mediator_plan_professional | default('Professional – 15 mediations / month (paid)') }} ✓</span>
+    {% else %}
+      <a href="{{ url_for('billing.subscribe_pro') }}" class="btn btn-outline btn-sm">{{ t.mediator_plan_professional | default('Professional – 15 mediations / month (paid)') }}</a>
+    {% endif %}
+    {% if mediator_profile.subscription_plan == 'enterprise' and mediator_profile.subscription_status == 'active' %}
+      <span class="btn btn-outline btn-sm" style="opacity:0.8;cursor:default;pointer-events:none">{{ t.mediator_plan_enterprise | default('Enterprise – unlimited mediations (paid)') }} ✓</span>
+    {% else %}
+      <a href="{{ url_for('billing.subscribe_enterprise') }}" class="btn btn-outline btn-sm">{{ t.mediator_plan_enterprise | default('Enterprise – unlimited mediations (paid)') }}</a>
+    {% endif %}
+    {% if bulk_pack_size_value %}
+      <a href="{{ url_for('billing.buy_pack', pack_size=bulk_pack_size_value) }}" class="btn btn-accent btn-sm">
+        {{ (t.mediator_buy_pack_label | default('Buy X extra mediations')) | replace('X', bulk_pack_size_value|string) }}
+      </a>
+    {% endif %}
   </div>
 </div>
 {% endif %}

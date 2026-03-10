@@ -7,7 +7,7 @@
     {{ t.payout_settings | default('Payout settings') }}
   </h1>
   <p class="text-muted text-sm" style="margin-bottom:1.5rem">
-    {{ t.payout_settings_intro | default('Add your Stripe Connect or PayPal account to receive payments from mediations you facilitate. The platform retains a commission on each paid mediation; the remainder is paid to you.') }}
+    {{ t.payout_settings_intro | default('Add your Stripe Connect account or IBAN/mobile to receive payments from mediations you facilitate. The platform retains a commission on each paid mediation; the remainder is paid to you.') }}
   </p>
 
   <div class="card" style="margin-bottom:1.5rem">
@@ -59,6 +59,7 @@
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_kind | default('Kind') }}</th>
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_amount | default('Amount') }}</th>
           <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_status | default('Status') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_done | default('Done') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -71,6 +72,17 @@
           <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{% if tx.kind == 'standard' %}{{ t.payment_kind_standard | default('Fixed price') }}{% elif tx.kind == 'donation' %}{{ t.payment_kind_donation | default('Donation') }}{% elif tx.kind == 'probono' %}{{ t.payment_kind_probono | default('Pro bono') }}{% else %}{{ tx.kind }}{% endif %}</td>
           <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format(tx.amount_cents / 100) }} {{ tx.currency }}</td>
           <td style="padding:0.5rem 0.75rem"><span class="badge badge-{{ 'closed' if tx.status == 'paid' else 'pending' }}">{% if tx.status == 'paid' %}{{ t.status_paid | default('Paid') }}{% else %}{{ t.pending | default('Pending') }}{% endif %}</span></td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">
+            {% if tx.mediator_received_at %}
+              <span style="color:var(--success)">✓ {{ t.payout_marked_done | default('Yes') }}</span>
+            {% elif tx.status == 'paid' %}
+              <form method="post" action="{{ url_for('mediation.mark_payment_received', payment_id=tx.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-outline btn-sm">{{ t.payout_mark_done | default('Mark as done') }}</button>
+              </form>
+            {% else %}
+              —
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -79,6 +91,41 @@
   {% else %}
   <div class="card" style="text-align:center;padding:2rem">
     <p class="text-muted">{{ t.payout_no_transactions | default('No payment transactions yet.') }}</p>
+  </div>
+  {% endif %}
+
+  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:2rem 0 0.75rem">
+    {{ t.billing_history_heading | default('Your Stripe transactions') }}
+  </h2>
+  <p class="text-muted text-sm" style="margin-bottom:0.75rem">
+    {{ t.billing_history_intro | default('Subscriptions and bulk pack purchases you have made via Stripe.') }}
+  </p>
+  {% if billing_transactions %}
+  <div class="card" style="overflow-x:auto">
+    <table style="width:100%;font-size:0.85rem;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);text-align:left">
+          <th style="padding:0.5rem 0.75rem;color:var(--muted)">{{ t.payout_table_date | default('Date') }}</th>
+          <th style="padding:0.5rem 0.75rem;color:var(--muted)">{{ t.billing_description | default('Description') }}</th>
+          <th style="padding:0.5rem 0.75rem;color:var(--muted)">{{ t.payout_table_amount | default('Amount') }}</th>
+          <th style="padding:0.5rem 0.75rem;color:var(--muted)">{{ t.billing_invoice | default('Invoice') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for tx in billing_transactions %}
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:0.5rem 0.75rem">{{ tx.created_at.strftime('%d %b %Y %H:%M') if tx.created_at else '' }}</td>
+          <td style="padding:0.5rem 0.75rem">{{ tx.description }}</td>
+          <td style="padding:0.5rem 0.75rem">{{ "%.2f"|format((tx.amount_cents or 0) / 100) }} {{ (tx.currency or 'EUR')|upper }}</td>
+          <td style="padding:0.5rem 0.75rem">{% if tx.invoice_url %}<a href="{{ tx.invoice_url }}" target="_blank" rel="noopener">{{ t.download_invoice | default('Download invoice') }}</a>{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:2rem">
+    <p class="text-muted">{{ t.billing_no_transactions | default('No Stripe billing transactions yet.') }}</p>
   </div>
   {% endif %}
 

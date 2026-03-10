@@ -39,6 +39,18 @@ def ensure_period(profile: MediatorProfile, now: datetime | None = None) -> None
     if not profile.current_period_start or not profile.current_period_end or not (
         profile.current_period_start <= now < profile.current_period_end
     ):
+        # If this is the very first period initialisation (no previous period and
+        # no carry-over / usage yet), just start the period without adding any
+        # fictitious "unused" quota to carry_over_balance. This avoids doubling
+        # the quota when a subscription is first activated mid-month.
+        if (
+            profile.current_period_start is None
+            and profile.current_period_end is None
+            and (profile.carry_over_balance or 0) == 0
+            and (profile.used_in_period or 0) == 0
+        ):
+            profile.current_period_start, profile.current_period_end = _current_period_bounds(now)
+            return
         # New period → carry over unused quota from previous period
         monthly_quota = profile.free_quota_per_month
         if profile.subscription_plan == "professional" and profile.subscription_status == "active":

@@ -236,15 +236,24 @@
 <footer class="site-footer">
   <div class="container">
     <div class="footer-links">
-      <a href="{{ url_for('legal.privacy') }}">{{ t.footer_privacy }}</a>
+      <a href="{{ url_for('legal.privacy') }}">{{ t.footer_privacy | default('Privacy policy') }}</a>
       <span class="footer-sep">·</span>
-      <a href="{{ url_for('legal.terms_mediators') }}">{{ t.footer_terms }}</a>
+      <a href="{{ url_for('legal.terms_mediators') }}">{{ t.footer_terms | default('Terms for mediators') }}</a>
+      {% if company_contact_email or company_contact_phone %}
       <span class="footer-sep">·</span>
-      <span class="footer-contact">{{ t.footer_contact }}: <a href="mailto:hello@diogocordeiro.pt">hello@diogocordeiro.pt</a></span>
+      <span class="footer-contact">
+        {{ t.footer_contact | default('Contact') }}:
+        {% if company_contact_email %}<a href="mailto:{{ company_contact_email }}">{{ company_contact_email }}</a>{% endif %}
+        {% if company_contact_email and company_contact_phone %} · {% endif %}
+        {% if company_contact_phone %}<a href="tel:{{ company_contact_phone }}">{{ company_contact_phone }}</a>{% endif %}
+      </span>
+      {% endif %}
     </div>
+    {% if company_address %}
     <div class="footer-address text-sm text-muted">
-      {{ t.footer_address }}
+      {{ company_address }}
     </div>
+    {% endif %}
   </div>
 </footer>
 

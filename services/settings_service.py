@@ -14,16 +14,35 @@ from extensions import db
 from models import SiteSetting, MediationPayment
 
 
+def _env_get(key: str) -> str:
+    """
+    Get value from os.environ, with Windows-safe handling: CRLF/BOM can leave
+    keys like 'STRIPE_WEBHOOK_SECRET\\r' or '\\ufeffKEY', so we try exact key
+    then stripped key, then match any env key that strips to our key.
+    """
+    val = os.environ.get(key)
+    if val is not None and str(val).strip():
+        return str(val).strip()
+    val = os.environ.get(key.strip())
+    if val is not None and str(val).strip():
+        return str(val).strip()
+    key_clean = key.strip()
+    for k, v in os.environ.items():
+        if k.strip() == key_clean and v and str(v).strip():
+            return str(v).strip()
+    return ""
+
+
 def get_setting(key: str, default: str = "") -> str:
-    # Env wins (useful for deploys)
-    env_val = os.environ.get(key)
-    if env_val is not None and env_val != "":
+    # Env wins (useful for deploys). Use Windows-safe env lookup.
+    env_val = _env_get(key)
+    if env_val:
         return env_val
 
     try:
         row = SiteSetting.query.get(key)
         if row and row.value is not None:
-            return str(row.value)
+            return str(row.value).strip()
     except Exception:
         pass
 
@@ -51,14 +70,6 @@ def stripe_public_key() -> str:
 def stripe_webhook_secret() -> str:
     """Signing secret for Stripe webhooks (starts with whsec_). From Stripe Dashboard → Developers → Webhooks."""
     return get_setting("STRIPE_WEBHOOK_SECRET", "")
-
-
-def paypal_client_id() -> str:
-    return get_setting("PAYPAL_CLIENT_ID", "")
-
-
-def paypal_client_secret() -> str:
-    return get_setting("PAYPAL_CLIENT_SECRET", "")
 
 
 def platform_commission_percent() -> float:
@@ -129,6 +140,14 @@ def bulk_price_per_mediation_eur() -> float:
     return float(get_setting("BULK_PRICE_PER_MEDIATION_EUR", "10") or 10.0)
 
 
+def bulk_pack_size() -> int:
+    """Number of mediations included in one bulk pack purchase (admin-configurable, default 3)."""
+    try:
+        return int(get_setting("BULK_PACK_SIZE", "3") or 3)
+    except ValueError:
+        return 3
+
+
 def is_participant_paid(mediation_id: int, participant_id: int) -> bool:
     paid = (
         MediationPayment.query
@@ -136,6 +155,41 @@ def is_participant_paid(mediation_id: int, participant_id: int) -> bool:
         .first()
     )
     return bool(paid)
+
+
+# ---------------------------------------------------------------------------
+# Company / legal data (privacy policy, terms)
+# ---------------------------------------------------------------------------
+
+def company_name() -> str:
+    return get_setting("COMPANY_NAME", "")
+
+
+def company_address() -> str:
+    return get_setting("COMPANY_ADDRESS", "")
+
+
+def company_contact_email() -> str:
+    return get_setting("COMPANY_CONTACT_EMAIL", "")
+
+
+def company_contact_phone() -> str:
+    return get_setting("COMPANY_CONTACT_PHONE", "")
+
+
+def company_fiscal_number() -> str:
+    return get_setting("COMPANY_FISCAL_NUMBER", "")
+
+
+def get_company_placeholders() -> dict:
+    """Return dict of placeholder -> value for legal documents (e.g. {{COMPANY_NAME}} -> value)."""
+    return {
+        "{{COMPANY_NAME}}": company_name(),
+        "{{COMPANY_ADDRESS}}": company_address(),
+        "{{COMPANY_CONTACT_EMAIL}}": company_contact_email(),
+        "{{COMPANY_CONTACT_PHONE}}": company_contact_phone(),
+        "{{COMPANY_FISCAL_NUMBER}}": company_fiscal_number(),
+    }
 
 
 def email_language() -> str:

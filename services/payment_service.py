@@ -109,11 +109,6 @@ def ensure_mediation_stripe_price(mediation) -> bool:
         return False
 
 
-def start_paypal_flow(mediation, participant, kind: str, donation_extra_cents: int = 0) -> str:
-    """PayPal is not used; Stripe is the only payment provider. Returns empty string."""
-    return ""
-
-
 # ---------------------------------------------------------------------------
 # Subscription and bulk purchase Checkout for mediators (single platform Stripe account)
 # ---------------------------------------------------------------------------
@@ -216,6 +211,7 @@ def start_bulk_pack_checkout(user, pack_size: int) -> str:
                 "pack_size": str(pack_size),
                 "mediator_user_id": str(user.id),
             },
+            invoice_creation={"enabled": True},
         )
     except stripe.StripeError:
         return ""

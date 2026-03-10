@@ -446,6 +446,28 @@ class MediatorProfile(db.Model):
 
 
 # ---------------------------------------------------------------------------
+# Mediator billing (Stripe transactions: subscriptions, bulk packs)
+# ---------------------------------------------------------------------------
+
+class MediatorBillingTransaction(db.Model):
+    """
+    Record of a Stripe payment made by a mediator to the platform (subscription or bulk pack).
+    """
+    __tablename__ = "mediator_billing_transaction"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    kind = db.Column(db.String(20), nullable=False)  # subscription | bulk_pack
+    description = db.Column(db.String(200), nullable=False)  # e.g. "Professional plan", "Bulk pack (10 mediations)"
+    amount_cents = db.Column(db.Integer, nullable=False)
+    currency = db.Column(db.String(3), default="eur")
+    stripe_session_id = db.Column(db.String(200))  # Checkout session id
+    invoice_url = db.Column(db.String(512))  # Stripe hosted invoice PDF or URL for download
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref=db.backref("billing_transactions", lazy="dynamic"))
+
+
+# ---------------------------------------------------------------------------
 # Settings (admin-configurable)
 # ---------------------------------------------------------------------------
 
@@ -461,14 +483,13 @@ class SiteSetting(db.Model):
 
 class MediatorPayoutConfig(db.Model):
     """
-    Per-mediator payout account: Stripe Connect and/or PayPal for receiving payments.
+    Per-mediator payout account: Stripe Connect and/or IBAN/mobile for receiving payments.
     One row per mediator (user_id unique).
     """
     __tablename__ = "mediator_payout_config"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, unique=True)
     stripe_connect_account_id = db.Column(db.String(120), nullable=True)  # Stripe Connect Express account id
-    paypal_merchant_id = db.Column(db.String(120), nullable=True)  # or PayPal merchant/email for payouts
     iban = db.Column(db.String(34), nullable=True)  # IBAN for bank transfers
     mobile_phone = db.Column(db.String(50), nullable=True)  # Mobile number for local payouts (e.g. MB WAY)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -488,7 +509,7 @@ class MediationPayment(db.Model):
     participant_id = db.Column(db.Integer, db.ForeignKey('mediation_participant.id'), nullable=False)
     payer_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
-    provider = db.Column(db.String(20), nullable=False)  # stripe | paypal
+    provider = db.Column(db.String(20), nullable=False)  # stripe (paypal kept for legacy records only)
     status = db.Column(db.String(20), default="pending")  # pending | paid | failed | cancelled
     # standard = fixed price, donation = party pays what they state, probono = fee waived
     kind = db.Column(db.String(20), default="standard")
@@ -499,6 +520,7 @@ class MediationPayment(db.Model):
     external_id = db.Column(db.String(200))  # session id / order id
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     paid_at = db.Column(db.DateTime)
+    mediator_received_at = db.Column(db.DateTime, nullable=True)  # when mediator marked payout as received
 
     mediation = db.relationship('Mediation', back_populates='payments')
     participant = db.relationship('MediationParticipant', back_populates='payments')

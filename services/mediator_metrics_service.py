@@ -1,10 +1,12 @@
 """
 Mediator metrics: mediations opened, agreements reached,
-explanation response average time, confirmation response time.
+explanation response average time, confirmation response time,
+total value received from mediations, total expended (billing).
 """
 from typing import Optional
 
-from models import Mediation, Agreement
+from extensions import db
+from models import Mediation, Agreement, MediationPayment, MediatorBillingTransaction
 
 
 def get_mediator_metrics(mediator_id: int) -> dict:
@@ -14,6 +16,8 @@ def get_mediator_metrics(mediator_id: int) -> dict:
     - agreements_reached: count where phase == 'agreement' and agreement exists
     - explanation_response_avg_hours: avg (explanation_added_at - explanation_requested_at) in hours, or None
     - confirmation_response_avg_hours: avg (mediator_confirmed_at - mediator_invited_at) in hours, or None
+    - total_value_received_cents: sum of mediator_payout_cents for paid mediation payments
+    - total_expended_cents: sum of MediatorBillingTransaction.amount_cents (subscriptions + bulk packs)
     """
     base = Mediation.query.filter(Mediation.mediator_id == mediator_id)
     mediations_opened = base.count()
@@ -72,11 +76,30 @@ def get_mediator_metrics(mediator_id: int) -> dict:
     else:
         confirmation_response_avg_hours = None
 
+    # Total value received: sum of mediator_payout_cents for payments with status=paid
+    received_row = (
+        MediationPayment.query.join(Mediation, MediationPayment.mediation_id == Mediation.id)
+        .filter(Mediation.mediator_id == mediator_id, MediationPayment.status == "paid")
+        .with_entities(db.func.coalesce(db.func.sum(MediationPayment.mediator_payout_cents), 0))
+        .scalar()
+    )
+    total_value_received_cents = int(received_row) if received_row is not None else 0
+
+    # Total expended: sum of MediatorBillingTransaction.amount_cents
+    expended_row = (
+        MediatorBillingTransaction.query.filter(MediatorBillingTransaction.user_id == mediator_id)
+        .with_entities(db.func.coalesce(db.func.sum(MediatorBillingTransaction.amount_cents), 0))
+        .scalar()
+    )
+    total_expended_cents = int(expended_row) if expended_row is not None else 0
+
     return {
         "mediations_opened": mediations_opened,
         "agreements_reached": agreements_reached,
         "explanation_response_avg_hours": explanation_response_avg_hours,
         "confirmation_response_avg_hours": confirmation_response_avg_hours,
+        "total_value_received_cents": total_value_received_cents,
+        "total_expended_cents": total_expended_cents,
     }
 
 
@@ -99,3 +122,8 @@ def format_duration_hours(hours: Optional[float]) -> str:
         return f"{hours:.1f} h"
     days = hours / 24.0
     return f"{days:.1f} days"
+
+
+def format_currency_cents(cents: int, currency: str = "EUR") -> str:
+    """Format cents as money string."""
+    return f"{cents / 100:.2f} {currency}"

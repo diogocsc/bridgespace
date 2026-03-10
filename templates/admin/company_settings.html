@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Company data – Admin{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:0.25rem">
+    Company data
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1.5rem">
+    This data is shown in the <a href="{{ url_for('legal.privacy') }}" target="_blank" rel="noopener">Privacy policy</a>
+    and <a href="{{ url_for('legal.terms_mediators') }}" target="_blank" rel="noopener">Terms for mediators</a>.
+    Leave a field empty to show nothing for that line.
+  </p>
+
+  <div class="card">
+    <form method="POST">
+      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
+        Legal / contact
+      </div>
+      <div class="form-group">
+        <label for="company_name">Company or responsible name</label>
+        <input type="text" id="company_name" name="company_name" value="{{ company_name }}"
+               placeholder="e.g. Company Lda. or Person Name">
+      </div>
+      <div class="form-group">
+        <label for="company_address">Address</label>
+        <input type="text" id="company_address" name="company_address" value="{{ company_address }}"
+               placeholder="Street, postal code, city, country">
+      </div>
+      <div class="form-group">
+        <label for="company_contact_email">Contact email</label>
+        <input type="email" id="company_contact_email" name="company_contact_email" value="{{ company_contact_email }}"
+               placeholder="hello@example.com">
+      </div>
+      <div class="form-group">
+        <label for="company_contact_phone">Contact phone</label>
+        <input type="text" id="company_contact_phone" name="company_contact_phone" value="{{ company_contact_phone }}"
+               placeholder="+351 123 456 789">
+      </div>
+      <div class="form-group">
+        <label for="company_fiscal_number">Fiscal number (NIF / VAT)</label>
+        <input type="text" id="company_fiscal_number" name="company_fiscal_number" value="{{ company_fiscal_number }}"
+               placeholder="e.g. PT123456789">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save</button>
+    </form>
+  </div>
+
+  <p class="text-sm text-muted" style="margin-top:1.5rem">
+    <a href="{{ url_for('admin.dashboard') }}">← Admin dashboard</a>
+  </p>
+</div>
+{% endblock %}

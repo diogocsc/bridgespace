@@ -14,6 +14,7 @@ from services.payment_service import (
     start_bulk_pack_checkout,
 )
 from services.translations import translate
+from services.settings_service import bulk_pack_size
 
 
 billing_bp = Blueprint("billing", __name__, url_prefix="/billing")
@@ -53,9 +54,11 @@ def subscribe_enterprise():
 @login_required
 def buy_pack(pack_size: int):
     _require_mediator()
-    if pack_size <= 0:
+    # Superadmin configures the bulk pack size; ignore arbitrary URL values.
+    configured_size = bulk_pack_size()
+    if configured_size <= 0:
         return redirect(url_for("mediation.payout_settings"))
-    url = start_bulk_pack_checkout(current_user, pack_size)
+    url = start_bulk_pack_checkout(current_user, configured_size)
     if not url:
         lang = getattr(current_user, "preferred_language", "en")
         flash(translate("billing_checkout_error", lang), "danger")

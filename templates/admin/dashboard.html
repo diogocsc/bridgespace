@@ -33,12 +33,15 @@
     <ul style="list-style:none;padding:0;margin:0;">
       {% if current_user.is_superadmin %}
       <li style="margin-bottom:.5rem;">
-        <a href="{{ url_for('admin.payment_settings') }}">Payment settings (Stripe / PayPal) — Superadmin</a>
+        <a href="{{ url_for('admin.payment_settings') }}">Payment settings (Stripe) — Superadmin</a>
       </li>
       {% endif %}
       {% if current_user.is_superadmin %}
       <li style="margin-bottom:.5rem;">
         <a href="{{ url_for('admin.integration_settings') }}">Messaging integrations (WhatsApp, Telegram, Signal)</a>
+      </li>
+      <li style="margin-bottom:.5rem;">
+        <a href="{{ url_for('admin.company_settings') }}">Company data (privacy &amp; terms)</a>
       </li>
       {% endif %}
       <li style="margin-bottom:.5rem;">

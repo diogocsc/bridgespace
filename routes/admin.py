@@ -2,7 +2,7 @@
 routes/admin.py
 
 Simple admin/backoffice for:
- - Payment settings (Stripe / PayPal keys, default price)
+ - Payment settings (Stripe keys, default price)
  - User management (roles, mediator flag)
  - Mediation overview (basic list, delete with audit log)
 """
@@ -17,8 +17,6 @@ from services.settings_service import (
     stripe_public_key,
     stripe_secret_key,
     stripe_webhook_secret,
-    paypal_client_id,
-    paypal_client_secret,
     platform_commission_percent,
     email_language,
     set_setting,
@@ -33,6 +31,12 @@ from services.settings_service import (
     pro_plan_price_eur,
     enterprise_plan_price_eur,
     bulk_price_per_mediation_eur,
+    bulk_pack_size,
+    company_name,
+    company_address,
+    company_contact_email,
+    company_contact_phone,
+    company_fiscal_number,
 )
 
 
@@ -72,14 +76,13 @@ def payment_settings():
         set_setting("STRIPE_PUBLIC_KEY", request.form.get("stripe_public_key", "").strip())
         set_setting("STRIPE_SECRET_KEY", request.form.get("stripe_secret_key", "").strip())
         set_setting("STRIPE_WEBHOOK_SECRET", request.form.get("stripe_webhook_secret", "").strip())
-        set_setting("PAYPAL_CLIENT_ID", request.form.get("paypal_client_id", "").strip())
-        set_setting("PAYPAL_CLIENT_SECRET", request.form.get("paypal_client_secret", "").strip())
         set_setting("PLATFORM_COMMISSION_PERCENT", request.form.get("platform_commission_percent", "5").strip())
         set_setting("FREE_QUOTA_DEFAULT_PER_MONTH", request.form.get("free_quota_default_per_month", "3").strip())
         set_setting("PRO_PLAN_QUOTA_PER_MONTH", request.form.get("pro_plan_quota_per_month", "15").strip())
         set_setting("PRO_PLAN_PRICE_EUR", request.form.get("pro_plan_price_eur", "50").strip())
         set_setting("ENTERPRISE_PLAN_PRICE_EUR", request.form.get("enterprise_plan_price_eur", "100").strip())
         set_setting("BULK_PRICE_PER_MEDIATION_EUR", request.form.get("bulk_price_per_mediation_eur", "10").strip())
+        set_setting("BULK_PACK_SIZE", request.form.get("bulk_pack_size", "3").strip())
         lang = (request.form.get("email_language", "") or "").strip().lower()
         if lang not in ("en", "pt"):
             lang = "en"
@@ -97,8 +100,6 @@ def payment_settings():
         stripe_pub=stripe_public_key(),
         stripe_sec=stripe_secret_key(),
         stripe_webhook_secret=stripe_webhook_secret(),
-        paypal_id=paypal_client_id(),
-        paypal_sec=paypal_client_secret(),
         platform_commission_percent=platform_commission_percent(),
         email_language=email_language(),
         free_quota_default_per_month=free_quota_default(),
@@ -106,6 +107,7 @@ def payment_settings():
         pro_plan_price_eur=pro_plan_price_eur(),
         enterprise_plan_price_eur=enterprise_plan_price_eur(),
         bulk_price_per_mediation_eur=bulk_price_per_mediation_eur(),
+        bulk_pack_size=bulk_pack_size(),
     )
 
 
@@ -236,10 +238,12 @@ def mediator_metrics_detail(user_id):
     if u.role != "mediator" and not Mediation.query.filter_by(mediator_id=u.id).first():
         from flask import abort
         abort(404)
-    from services.mediator_metrics_service import get_mediator_metrics, format_duration_hours
+    from services.mediator_metrics_service import get_mediator_metrics, format_duration_hours, format_currency_cents
     metrics = get_mediator_metrics(u.id)
     metrics["explanation_response_display"] = format_duration_hours(metrics["explanation_response_avg_hours"])
     metrics["confirmation_response_display"] = format_duration_hours(metrics["confirmation_response_avg_hours"])
+    metrics["total_value_received_display"] = format_currency_cents(metrics["total_value_received_cents"])
+    metrics["total_expended_display"] = format_currency_cents(metrics["total_expended_cents"])
     return render_template(
         "admin/mediator_metrics_detail.html",
         mediator_user=u,
@@ -272,5 +276,31 @@ def integration_settings():
         telegram_bot_token=telegram_bot_token(),
         signal_enabled=signal_enabled(),
         signal_api_url=signal_api_url(),
+    )
+
+
+@admin_bp.route("/settings/company", methods=["GET", "POST"])
+@login_required
+def company_settings():
+    """Superadmin-only: company data shown in privacy policy and terms."""
+    _require_admin()
+    _require_superadmin()
+
+    if request.method == "POST":
+        set_setting("COMPANY_NAME", request.form.get("company_name", "").strip())
+        set_setting("COMPANY_ADDRESS", request.form.get("company_address", "").strip())
+        set_setting("COMPANY_CONTACT_EMAIL", request.form.get("company_contact_email", "").strip())
+        set_setting("COMPANY_CONTACT_PHONE", request.form.get("company_contact_phone", "").strip())
+        set_setting("COMPANY_FISCAL_NUMBER", request.form.get("company_fiscal_number", "").strip())
+        flash("Company settings saved. Privacy policy and terms will show this data.", "success")
+        return redirect(url_for("admin.company_settings"))
+
+    return render_template(
+        "admin/company_settings.html",
+        company_name=company_name(),
+        company_address=company_address(),
+        company_contact_email=company_contact_email(),
+        company_contact_phone=company_contact_phone(),
+        company_fiscal_number=company_fiscal_number(),
     )
 

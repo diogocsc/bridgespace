@@ -12,11 +12,11 @@
 
 | | |
 |---|---|
-| **Nome** | Diogo Cordovil da Silva Cordeiro |
-| **Atividade** | Prestação de serviços de consultoria em tecnologias de informação (IT Consultant), em regime de profissional independente |
-| **Morada** | Rua Câmara Pestana, 2, 2710-531 Sintra, Portugal |
-| **E-mail** | hello@diogocordeiro.pt |
-| **NIF** | *(a preencher se e quando aplicável)* |
+| **Nome** | {{COMPANY_NAME}} |
+| **Morada** | {{COMPANY_ADDRESS}} |
+| **E-mail** | {{COMPANY_CONTACT_EMAIL}} |
+| **Telefone** | {{COMPANY_CONTACT_PHONE}} |
+| **NIF** | {{COMPANY_FISCAL_NUMBER}} |
 
 **1.3.** Os Termos de Mediador complementam os Termos Gerais de Utilização da Plataforma (quando existirem) e a Política de Privacidade. Em caso de conflito, prevalecem, quanto às matérias específicas de remuneração e pagamentos ao Mediador.
 
@@ -34,68 +34,31 @@
 
 ---
 
-## 3. Configuração de dados de pagamento (IBAN, telemóvel, Stripe, PayPal)
+## 3. Dados de pagamento e registo de transações
 
-**3.1.** Para receber os montantes que lhe são devidos, o Mediador deve configurar, na área de “Definições de Pagamentos” da Plataforma, pelo menos um dos seguintes meios:
+**3.1.** O Mediador pode, na área “Definições de Pagamentos” da Plataforma, indicar IBAN e/ou número de telemóvel para pagamentos móveis (por exemplo, MB WAY), para referência das partes com quem acordar a sua remuneração. A Plataforma não efetua transferências ao Mediador; a execução dos pagamentos entre as partes e o Mediador é da exclusiva responsabilidade destes.
 
-- (a) IBAN para transferências bancárias; e/ou  
-- (b) Número de telemóvel para pagamentos móveis (por exemplo, MB WAY ou serviço equivalente).
-
-**3.2.** Em alternativa, o Mediador pode, por sua iniciativa e responsabilidade, configurar:
-
-- (a) Conta Stripe própria (por exemplo, Stripe Connect); e/ou  
-- (b) Conta PayPal própria,
-
-para receber diretamente os pagamentos devidos pelas mediações que conduz.
-
-**3.3.** O prestador da Plataforma não recomenda a utilização exclusiva de contas Stripe ou PayPal próprias, uma vez que:
-
-- (a) Os fluxos de pagamento, taxas e eventuais bloqueios passam a depender diretamente dessas plataformas; e  
-- (b) A capacidade de apoio do prestador da Plataforma a problemas operacionais relacionados com esses pagamentos é reduzida.
-
-**3.4.** Sempre que o Mediador configure contas Stripe ou PayPal próprias, aceita que:
-
-- (a) O prestador da Plataforma não é responsável por falhas, atrasos ou bloqueios de pagamento imputáveis a essas plataformas; e  
-- (b) É sua responsabilidade garantir que tais contas estão corretamente configuradas, ativas e em conformidade com os termos dessas plataformas.
+**3.2.** A Plataforma disponibiliza um mecanismo de **registo e controlo** de pagamentos relativos às mediações (montantes, estado, marcação de “recebido” pelo Mediador). Este mecanismo serve apenas para registo e acompanhamento; a Plataforma **não fornece qualquer mecanismo transacional** para a execução dos pagamentos entre as partes e o Mediador. Os pagamentos devidos ao Mediador são acordados e realizados diretamente entre o Mediador e as partes.
 
 ---
 
-## 4. Calendário e forma de pagamento
+## 4. Registo e controlo de pagamentos (mediador–partes)
 
-**4.1.** Salvo disposição diversa acordada por escrito entre as partes, os pagamentos devidos ao Mediador, quando processados pelo prestador da Plataforma, são efetuados:
+**4.1.** A Plataforma permite ao Mediador **registar e acompanhar** os pagamentos associados às mediações que conduz (por exemplo, montante, estado, marcação como “recebido”). Este registo é meramente informativo e de controlo; a Plataforma **não executa** quaisquer pagamentos entre as partes e o Mediador. A forma, o calendário e a execução dos pagamentos devidos ao Mediador são acordados e realizados **diretamente entre o Mediador e as partes**, fora da Plataforma.
 
-- (a) Até ao dia **8 (oito)** de cada mês; e  
-- (b) Relativamente às mediações pagas concluídas no **mês civil anterior**.
+**4.2.** Na área de Definições de Pagamentos, o Mediador pode consultar as transações registadas e marcar cada entrada como “recebido” quando tiver efetivamente recebido o montante. Para as **subscrições** e **compras de pacotes de mediações** que o Mediador efetue junto da Plataforma (planos Professional/Enterprise e pacotes de mediações), a Plataforma pode disponibilizar o link para download da fatura correspondente a cada transação.
 
-**4.2.** Para efeitos da cláusula 4.1, consideram-se “mediações pagas” aquelas em que:
-
-- (a) O pagamento do(s) participante(s) tenha sido efetivamente recebido pela Plataforma ou através dos integradores de pagamento configurados (por exemplo, Stripe ou PayPal ligados à Plataforma); e  
-- (b) O estado do pagamento conste como “pago” na área de transações da Plataforma.
-
-**4.3.** O pagamento será realizado prioritariamente para:
-
-- (a) O IBAN configurado pelo Mediador; ou, na falta deste,  
-- (b) O número de telemóvel configurado para pagamentos móveis; ou, caso ambos falhem ou não existam,  
-- (c) As contas Stripe ou PayPal próprias, se e na medida em que estejam integradas e operacionais.
-
-**4.4.** O Mediador é obrigado a:
-
-- (a) Manter o IBAN e o número de telemóvel atualizados, exatos e em seu nome (ou em nome de entidade da qual tenha poderes para receber pagamentos);
-- (b) Verificar regularmente a área de pagamentos da Plataforma; e  
-- (c) Comunicar de imediato ao prestador da Plataforma qualquer suspeita de erro ou falta de pagamento.
-
-**4.5.** O prestador da Plataforma não é responsável por atrasos ou impossibilidade de pagamento quando:
-
-- (a) Os dados de IBAN ou telemóvel fornecidos sejam incorretos, desatualizados ou pertençam a terceiro não autorizado; ou  
-- (b) As contas Stripe/PayPal próprias do Mediador estejam suspensas, bloqueadas ou inoperacionais.
+**4.3.** O prestador da Plataforma não é responsável por atrasos, incumprimento ou disputas relativas a pagamentos acordados entre o Mediador e as partes, nem pela exatidão dos dados de IBAN ou telemóvel que o Mediador indique para referência.
 
 ---
 
-## 5. Comissão da Plataforma
+## 5. Modelo de utilização da Plataforma (subscrições e pacotes)
 
-**5.1.** A Plataforma aplica uma comissão sobre cada mediação paga, nos termos definidos na área de Administração da Plataforma. A percentagem da comissão pode ser atualizada pelo prestador, com aviso prévio razoável ao Mediador.
+**5.1.** A Plataforma não cobra **comissão** sobre os pagamentos acordados entre o Mediador e as partes. O uso da Plataforma pelos Mediadores rege-se por um **modelo baseado em subscrição** e na **compra de pacotes de mediações**.
 
-**5.2.** O valor a receber pelo Mediador é o montante pago pelo(s) participante(s), deduzido da comissão da Plataforma e, se aplicável, de taxas cobradas pelos prestadores de serviços de pagamento (por exemplo, Stripe, PayPal, bancos).
+**5.2.** O Mediador pode subscrever planos (por exemplo, Professional ou Enterprise) que conferem capacidade mensal de mediações, ou adquirir **pacotes de mediações** (compra única que acrescenta sessões ao seu saldo utilizável). Os preços e condições dos planos e dos pacotes são definidos na área de Administração da Plataforma e podem ser alterados pelo prestador, com aviso prévio razoável.
+
+**5.3.** O pagamento das subscrições e dos pacotes de mediações é efetuado pelo Mediador à Plataforma (por exemplo, via Stripe). A remuneração do Mediador pelas mediações que conduz é acordada e paga **diretamente entre o Mediador e as partes**, sem intervenção transacional da Plataforma.
 
 ---
 
@@ -148,4 +111,4 @@ para receber diretamente os pagamentos devidos pelas mediações que conduz.
 
 ---
 
-*Última atualização: [data a preencher]*
+*Última atualização: 10 de março de 2026.*

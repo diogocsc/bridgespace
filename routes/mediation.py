@@ -199,10 +199,14 @@ def dashboard():
     profile = None
     remaining = None
     total_quota = None
+    is_unlimited = False
+    bulk_pack_size_value = None
     if getattr(current_user, "is_mediator", False):
         profile = ensure_mediator_profile(current_user.id)
         remaining = available_mediations(profile)
         is_unlimited = remaining == float("inf")
+        from services.settings_service import bulk_pack_size
+        bulk_pack_size_value = bulk_pack_size()
         if not is_unlimited:
             from services.settings_service import pro_plan_quota_per_month
             monthly_quota = profile.free_quota_per_month
@@ -218,6 +222,7 @@ def dashboard():
         mediator_remaining_quota=remaining,
         mediator_total_quota=total_quota,
         mediator_quota_unlimited=is_unlimited if profile else False,
+        bulk_pack_size_value=bulk_pack_size_value,
     )
 
 
@@ -227,17 +232,19 @@ def mediator_metrics():
     """Mediators see their own metrics. Non-mediators get 403."""
     if not current_user.is_mediator:
         abort(403)
-    from services.mediator_metrics_service import get_mediator_metrics, format_duration_hours
+    from services.mediator_metrics_service import get_mediator_metrics, format_duration_hours, format_currency_cents
     metrics = get_mediator_metrics(current_user.id)
     metrics["explanation_response_display"] = format_duration_hours(metrics["explanation_response_avg_hours"])
     metrics["confirmation_response_display"] = format_duration_hours(metrics["confirmation_response_avg_hours"])
+    metrics["total_value_received_display"] = format_currency_cents(metrics["total_value_received_cents"])
+    metrics["total_expended_display"] = format_currency_cents(metrics["total_expended_cents"])
     return render_template('mediation/mediator_metrics.html', metrics=metrics)
 
 
 @mediation_bp.route('/mediation/payout-settings', methods=['GET', 'POST'])
 @login_required
 def payout_settings():
-    """Mediators configure their payout accounts (IBAN / phone / Stripe / PayPal) and view transactions."""
+    """Mediators configure their payout accounts (IBAN / phone / Stripe Connect) and view transactions."""
     if not current_user.is_mediator:
         abort(403)
     config = MediatorPayoutConfig.query.filter_by(user_id=current_user.id).first()
@@ -246,7 +253,6 @@ def payout_settings():
             config = MediatorPayoutConfig(user_id=current_user.id)
             db.session.add(config)
         config.stripe_connect_account_id = request.form.get('stripe_connect_account_id', '').strip() or None
-        config.paypal_merchant_id = request.form.get('paypal_merchant_id', '').strip() or None
         config.iban = request.form.get('iban', '').strip() or None
         config.mobile_phone = request.form.get('mobile_phone', '').strip() or None
         db.session.commit()
@@ -263,11 +269,35 @@ def payout_settings():
         .limit(200)
         .all()
     )
+    # List Stripe billing transactions (subscriptions, bulk packs) paid by this mediator
+    from models import MediatorBillingTransaction
+    billing_transactions = (
+        MediatorBillingTransaction.query.filter_by(user_id=current_user.id)
+        .order_by(MediatorBillingTransaction.created_at.desc())
+        .limit(100)
+        .all()
+    )
     return render_template(
         'mediation/payout_settings.html',
         config=config,
         transactions=transactions,
+        billing_transactions=billing_transactions,
     )
+
+
+@mediation_bp.route('/mediation/payout-settings/mark-received/<int:payment_id>', methods=['POST'])
+@login_required
+def mark_payment_received(payment_id):
+    """Mark a mediation payment as received by the mediator (payout done)."""
+    if not current_user.is_mediator:
+        abort(403)
+    payment = MediationPayment.query.get_or_404(payment_id)
+    mediation = payment.mediation
+    if not mediation or mediation.mediator_id != current_user.id:
+        abort(404)
+    payment.mediator_received_at = datetime.utcnow()
+    db.session.commit()
+    return redirect(url_for('mediation.payout_settings'))
 
 
 # ---------------------------------------------------------------------------

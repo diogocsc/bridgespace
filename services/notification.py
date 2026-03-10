@@ -608,7 +608,7 @@ def send_mediator_unconfirmed_alert_to_admins(mediation):
 
 def send_payment_config_changed_notification():
     """
-    Notify all admins and superadmins that Stripe/PayPal (payment) configuration was changed.
+    Notify all admins and superadmins that Stripe (payment) configuration was changed.
     """
     from models import User
     admins = User.query.filter(User.role.in_(("admin", "superadmin"))).all()
@@ -618,7 +618,7 @@ def send_payment_config_changed_notification():
     lang = _email_lang_default()
     if lang == "pt":
         c = (
-            "<p>A <strong>configuração de pagamentos Stripe / PayPal</strong> no backoffice foi alterada.</p>"
+            "<p>A <strong>configuração de pagamentos Stripe</strong> no backoffice foi alterada.</p>"
             "<p>Se não efetuou esta alteração, reveja as definições e assegure-se de que apenas pessoas autorizadas têm acesso de superadministrador.</p>"
             f"<a href='{url}' class='btn'>Ver definições de pagamento</a><hr>"
             f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
@@ -627,7 +627,7 @@ def send_payment_config_changed_notification():
         title = "Configuração de pagamentos alterada"
     else:
         c = (
-            "<p>The <strong>Stripe / PayPal payment configuration</strong> in the backoffice has been changed.</p>"
+            "<p>The <strong>Stripe payment configuration</strong> in the backoffice has been changed.</p>"
             "<p>If you did not make this change, please review the settings and ensure only authorised personnel have superadmin access.</p>"
             f"<a href='{url}' class='btn'>View payment settings</a><hr>"
             f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"

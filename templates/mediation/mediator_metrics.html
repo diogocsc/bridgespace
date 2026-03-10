@@ -26,6 +26,18 @@
       </div>
       <div>
         <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
+          {{ t.metric_total_value_received | default('Total value received from mediations') }}
+        </div>
+        <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.total_value_received_display }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
+          {{ t.metric_total_expended | default('Total expended so far') }}
+        </div>
+        <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.total_expended_display }}</div>
+      </div>
+      <div>
+        <div class="text-sm text-muted" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">
           {{ t.metric_explanation_response | default('Explanation response (avg)') }}
         </div>
         <div style="font-size:1.25rem;font-weight:600;color:var(--charcoal)">{{ metrics.explanation_response_display }}</div>

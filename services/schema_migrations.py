@@ -329,6 +329,15 @@ def ensure_schema():
                         "ADD COLUMN mediator_payout_cents INTEGER"
                     )
                 )
+        if "mediator_received_at" not in cols:
+            logger.warning("Applying migration: add mediation_payment.mediator_received_at")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediation_payment "
+                        "ADD COLUMN mediator_received_at DATETIME"
+                    )
+                )
 
     # --- mediation_deletion_log table (new) ---
     if not insp.has_table("mediation_deletion_log"):
@@ -341,4 +350,21 @@ def ensure_schema():
         logger.warning("Applying migration: create mediation_session")
         from models import MediationSession  # noqa: F401
         db.metadata.create_all(engine, tables=[db.metadata.tables["mediation_session"]])
+
+    # --- mediator_billing_transaction table (new) ---
+    if not insp.has_table("mediator_billing_transaction"):
+        logger.warning("Applying migration: create mediator_billing_transaction")
+        from models import MediatorBillingTransaction  # noqa: F401
+        db.metadata.create_all(engine, tables=[db.metadata.tables["mediator_billing_transaction"]])
+    else:
+        mbt_cols = {c["name"] for c in insp.get_columns("mediator_billing_transaction")}
+        if "invoice_url" not in mbt_cols:
+            logger.warning("Applying migration: add mediator_billing_transaction.invoice_url")
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE mediator_billing_transaction "
+                        "ADD COLUMN invoice_url VARCHAR(512)"
+                    )
+                )
 

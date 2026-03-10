@@ -38,7 +38,7 @@ When requesting or creating a mediation, the user chooses **Structured** or **Un
    - Mediator writes an explanation of the process and can set price per party.
    - Participants can only **mark as read** after the mediator has added an explanation.
    - **“Ask mediator for an explanation”** – If there is no explanation yet, participants see a button; the mediator is notified (email + optional WhatsApp/Telegram/Signal) with a link to add the explanation.
-   - Payments (Stripe / PayPal) – Standard fee, donation, or pro bono; optional extra donation.
+   - Payments (Stripe) – Standard fee, donation, or pro bono; optional extra donation.
 2. **Perspectives** – Parties submit their point of view; AI can reformulate in non-violent communication (NVC) style.
 3. **Agenda** – Agenda points (manual or AI-suggested from perspectives).
 4. **Proposals** – Proposals per agenda point (NVC reformulation); mediator can set status (e.g. accepted).
@@ -69,7 +69,7 @@ When requesting or creating a mediation, the user chooses **Structured** or **Un
 ## Backoffice (admin)
 
 - **Dashboard** – Overview (user count, mediation count) and links to sections.
-- **Payment settings** (superadmin only) – Stripe (publishable + secret key), PayPal (client ID + secret), **platform commission %**. Stored in `SiteSetting`. **On any change**, all admins and superadmins are notified by email (and optional WhatsApp/Telegram/Signal).
+- **Payment settings** (superadmin only) – Stripe (publishable + secret key, webhook secret), **platform commission %**. Stored in `SiteSetting`. **On any change**, all admins and superadmins are notified by email (and optional WhatsApp/Telegram/Signal).
 - **Messaging integrations** (superadmin only) – Enable/configure WhatsApp, Telegram, Signal (API key, bot token, API URL).
 - **Users & roles** – List users; change role (`user`, `mediator`, `admin`, `superadmin`). Only superadmin can assign superadmin.
 - **Mediations** – List recent mediations (e.g. last 200).
@@ -108,12 +108,11 @@ When requesting or creating a mediation, the user chooses **Structured** or **Un
 ## Payments
 
 - **Stripe** – Checkout session; success redirect records payment. **Mocked in tests** so the app loads without the real Stripe module.
-- **PayPal** – Start flow; success/cancel handling.
 - **Payment types** – **Fixed price** (standard fee), **donation** (each party can add an optional extra amount), **pro-bono** (fee waived). All create a registered transaction.
 - **Per-mediation** – Price per party set by mediator in pre-mediation; payment required (or not) per mediation.
 - **Transaction registration** – Every payment (fixed, donation, pro-bono) is stored in `MediationPayment` with amount, **platform commission**, and **mediator payout**.
 - **Platform commission** – Configurable percentage (backoffice, superadmin). Applied to each paid mediation; the remainder is the mediator’s payout.
-- **Mediator payout** – Mediators can add their own **Stripe Connect** and/or **PayPal** account in **Payout settings** (dashboard → Payout settings). All transactions for mediations they mediate are listed there with commission and payout breakdown.
+- **Mediator payout** – Mediators configure **IBAN** and/or **mobile number** in **Payout settings** (dashboard → Payout settings) to receive payments. All transactions for mediations they mediate are listed there with commission and payout breakdown.
 
 ---
 

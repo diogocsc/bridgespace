@@ -6,7 +6,7 @@ AI-backed conflict mediation platform built with Flask, SQLAlchemy, SocketIO and
 
 - **Auth** – Registration, login, email verification, password reset, preferences (including WhatsApp/Telegram/Signal), delete account; optional reCAPTCHA on public forms
 - **Mediation** – Request or create mediations; 5 phases (pre-mediation → perspectives → agenda → proposals → agreement); invite by email/SMS; join via token
-- **Pre-mediation** – Mediator explains the process; participants can only mark as read after that; “Ask mediator for an explanation” notifies mediator; payments (Stripe/PayPal)
+- **Pre-mediation** – Mediator explains the process; participants can only mark as read after that; “Ask mediator for an explanation” notifies mediator; payments (Stripe)
 - **Mediator selection** – First: random (fewer assignments); 48h to confirm; second by ranking if timeout; escalate to admins if both time out
 - **Notifications** – Email + optional WhatsApp, Telegram, Signal (multi-channel per user; backoffice config for superadmin)
 - **Mediator metrics** – Mediators see own; admins see all: mediations opened, agreements reached, explanation & confirmation response times

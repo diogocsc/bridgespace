@@ -2,9 +2,28 @@
 BridgeSpace - Application Factory
 """
 import os
+from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv()
+from dotenv import load_dotenv, dotenv_values
+
+# Load .env from the directory containing this file (project root), so it works
+# regardless of the current working directory when starting the app.
+_project_root = Path(__file__).resolve().parent
+_env_path = _project_root / ".env"
+load_dotenv(_env_path)
+
+# Windows: ensure Stripe (and other) keys from .env are in os.environ even if
+# load_dotenv left keys with CRLF/BOM (e.g. "STRIPE_WEBHOOK_SECRET\r").
+# Re-apply from parsed .env using stripped keys/values.
+if _env_path.exists():
+    _raw = dotenv_values(_env_path)
+    for _k, _v in (_raw or {}).items():
+        if _k is None or _v is None:
+            continue
+        _kc = _k.strip().strip("\r\n")
+        _vc = str(_v).strip().strip("\r\n")
+        if _kc and _vc and not _kc.startswith("#"):
+            os.environ[_kc] = _vc
 
 from flask import Flask, redirect, url_for, request, jsonify
 from flask_login import current_user
@@ -85,6 +104,7 @@ def create_app(test_config=None):
 
     # Inject translations, current language and public config into all templates
     from services.translations import get_translations, DEFAULT_LANGUAGE, LOCALES
+    from services.settings_service import company_contact_email, company_address, company_contact_phone
     @app.context_processor
     def inject_translations():
         lang = getattr(current_user, "preferred_language", None) if current_user.is_authenticated else DEFAULT_LANGUAGE
@@ -95,6 +115,9 @@ def create_app(test_config=None):
             "t": get_translations(lang),
             "current_lang": lang,
             "recaptcha_site_key": recaptcha_site_key,
+            "company_contact_email": company_contact_email(),
+            "company_address": company_address(),
+            "company_contact_phone": company_contact_phone(),
         }
 
     # root route

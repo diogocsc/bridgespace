@@ -36,7 +36,6 @@ def anonymise_user(user: User) -> None:
         config.iban = None
         config.mobile_phone = None
         config.stripe_connect_account_id = None
-        config.paypal_merchant_id = None
 
     # Clear mediator profile bio (personal info)
     profile = MediatorProfile.query.filter_by(user_id=uid).first()

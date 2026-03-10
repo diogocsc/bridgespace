@@ -7,7 +7,7 @@
     Payment settings
   </h1>
   <p class="text-muted text-sm" style="margin-bottom:1.5rem">
-    Configure Stripe and PayPal credentials. Leave a provider empty to disable it.
+    Configure Stripe credentials. Leave empty to disable payment flows.
   </p>
 
   <div class="card">
@@ -27,20 +27,6 @@
         <label for="stripe_webhook_secret">Webhook signing secret</label>
         <input type="text" id="stripe_webhook_secret" name="stripe_webhook_secret" value="{{ stripe_webhook_secret }}" placeholder="whsec_...">
         <small class="text-muted">From Stripe Dashboard → Developers → Webhooks. Required to confirm payments via checkout.session.completed.</small>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
-
-      <div class="section-title" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem;">
-        PayPal
-      </div>
-      <div class="form-group">
-        <label for="paypal_client_id">Client ID</label>
-        <input type="text" id="paypal_client_id" name="paypal_client_id" value="{{ paypal_id }}">
-      </div>
-      <div class="form-group">
-        <label for="paypal_client_secret">Client secret</label>
-        <input type="text" id="paypal_client_secret" name="paypal_client_secret" value="{{ paypal_sec }}">
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
@@ -88,6 +74,12 @@
         <input type="number" id="bulk_price_per_mediation_eur" name="bulk_price_per_mediation_eur"
                value="{{ '%.2f'|format(bulk_price_per_mediation_eur) }}" min="0" step="0.1" placeholder="10">
         <small class="text-muted">Used to calculate the price of mediation bundles that mediators can buy.</small>
+      </div>
+      <div class="form-group">
+        <label for="bulk_pack_size">Bulk pack size (mediations per purchase)</label>
+        <input type="number" id="bulk_pack_size" name="bulk_pack_size"
+               value="{{ bulk_pack_size }}" min="1" step="1" placeholder="3">
+        <small class="text-muted">How many mediations are included in a single bulk pack purchase. Default is 3.</small>
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">

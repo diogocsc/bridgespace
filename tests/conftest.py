@@ -8,7 +8,7 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-# Mock stripe (and optionally paypal) so app loads without installing them
+# Mock stripe so app loads without installing it
 from unittest.mock import MagicMock
 if "stripe" not in sys.modules:
     _stripe_mock = MagicMock()

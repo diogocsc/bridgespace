@@ -1,6 +1,7 @@
 """
 BridgeSpace - Legal pages (privacy policy, terms for mediators).
 Serves the markdown documents from legal/ as HTML.
+Company data (name, address, email, phone, fiscal number) is replaced from admin settings.
 """
 import os
 from flask import Blueprint, render_template, current_app
@@ -11,6 +12,15 @@ legal_bp = Blueprint("legal", __name__, url_prefix="/legal")
 def _legal_path(filename):
     root = current_app.root_path
     return os.path.join(root, "legal", filename)
+
+
+def _apply_company_placeholders(text: str) -> str:
+    """Replace {{COMPANY_*}} placeholders with values from settings."""
+    from services.settings_service import get_company_placeholders
+    out = text
+    for placeholder, value in get_company_placeholders().items():
+        out = out.replace(placeholder, value)
+    return out
 
 
 @legal_bp.route("/privacidade")
@@ -44,6 +54,7 @@ def _md_to_html(path):
         import markdown
         with open(path, "r", encoding="utf-8") as f:
             text = f.read()
+        text = _apply_company_placeholders(text)
         return markdown.markdown(
             text,
             extensions=["extra", "nl2br"],
