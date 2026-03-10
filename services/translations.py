@@ -51,7 +51,19 @@ LOCALES: Dict[str, Dict[str, str]] = {
         "mediator_buy_pack_10": "Buy 10 extra mediations",
         "mediator_buy_pack_label": "Buy X extra mediations",
         "mediator_terms_title": "Additional terms for mediators",
-        "mediator_terms_body": "Ao registar-se como mediador(a) na BridgeSpace, declara que aceita receber os pagamentos de mediação para o IBAN e/ou número de telemóvel que indicar nas suas definições de pagamentos. A plataforma efetuará os pagamentos devidos até ao dia 8 de cada mês, relativamente às mediações pagas do mês anterior. É da sua responsabilidade manter estes dados atualizados e corretos.\\n\\nPode, em alternativa, configurar a sua conta Stripe Connect para receber pagamentos diretamente. No entanto, ao fazê-lo, aceita que:\\n- os fluxos de pagamento e eventuais problemas de processamento dependem dessa plataforma; e\\n- a BridgeSpace poderá ter menor capacidade de apoiar questões operacionais relacionadas com esses pagamentos.\\n\\nAo assinalar esta opção, confirma que leu e aceita estes termos específicos de mediação.",
+        "mediator_terms_body": (
+            "Ao registar-se como mediador(a) na BridgeSpace, declara que atua como profissional independente e que a sua remuneração "
+            "pelas mediações é acordada e paga diretamente entre si e as partes, fora da Plataforma. A BridgeSpace apenas disponibiliza "
+            "uma ferramenta online para gestão de casos e registo de pagamentos, não intervindo como parte nos contratos nem como "
+            "intermediária de pagamentos.\n\n"
+            "É da sua responsabilidade emitir faturas/recibos, cumprir as obrigações fiscais e manter atualizados os dados de faturação "
+            "e contacto que indicar na Plataforma.\n\n"
+            "O uso da BridgeSpace pelos mediadores baseia-se em subscrições e/ou compra de pacotes de mediações, nos termos descritos na "
+            "área de Administração e nos Termos Específicos para Mediadores. As quantias pagas por subscrições ou pacotes dizem respeito "
+            "ao uso da Plataforma e não constituem comissão sobre os honorários de mediação.\n\n"
+            "Ao assinalar esta opção, confirma que leu e aceita estes Termos Específicos para Mediadores e a Política de Privacidade "
+            "aplicável."
+        ),
         "mediator_terms_accept_label": "Li e aceito os termos específicos para mediadores.",
         "mediator_terms_required": "Para se registar como mediador(a) tem de aceitar os termos específicos de mediação.",
         # Nav
@@ -479,7 +491,19 @@ LOCALES: Dict[str, Dict[str, str]] = {
         "mediator_buy_pack_10": "Comprar 10 mediações extra",
         "mediator_buy_pack_label": "Comprar X mediações extra",
         "mediator_terms_title": "Termos adicionais para mediadores",
-        "mediator_terms_body": "Ao registar-se como mediador(a) na BridgeSpace, declara que aceita receber os pagamentos de mediação para o IBAN e/ou número de telemóvel que indicar nas suas definições de pagamentos. A plataforma efetuará os pagamentos devidos até ao dia 8 de cada mês, relativamente às mediações pagas do mês anterior. É da sua responsabilidade manter estes dados atualizados e corretos.\\n\\nPode, em alternativa, configurar a sua conta Stripe Connect para receber pagamentos diretamente. No entanto, ao fazê-lo, aceita que:\\n- os fluxos de pagamento e eventuais problemas de processamento dependem dessa plataforma; e\\n- a BridgeSpace poderá ter menor capacidade de apoiar questões operacionais relacionadas com esses pagamentos.\\n\\nAo assinalar esta opção, confirma que leu e aceita estes termos específicos de mediação.",
+        "mediator_terms_body": (
+            "Ao registar-se como mediador(a) na BridgeSpace, declara que atua como profissional independente e que a sua remuneração "
+            "pelas mediações é acordada e paga diretamente entre si e as partes, fora da Plataforma. A BridgeSpace apenas disponibiliza "
+            "uma ferramenta online para gestão de casos e registo de pagamentos, não intervindo como parte nos contratos nem como "
+            "intermediária de pagamentos.\n\n"
+            "É da sua responsabilidade emitir faturas/recibos, cumprir as obrigações fiscais e manter atualizados os dados de faturação "
+            "e contacto que indicar na Plataforma.\n\n"
+            "O uso da BridgeSpace pelos mediadores baseia-se em subscrições e/ou compra de pacotes de mediações, nos termos descritos na "
+            "área de Administração e nos Termos Específicos para Mediadores. As quantias pagas por subscrições ou pacotes dizem respeito "
+            "ao uso da Plataforma e não constituem comissão sobre os honorários de mediação.\n\n"
+            "Ao assinalar esta opção, confirma que leu e aceita estes Termos Específicos para Mediadores e a Política de Privacidade "
+            "aplicável."
+        ),
         "mediator_terms_accept_label": "Li e aceito os termos específicos para mediadores.",
         "mediator_terms_required": "Para se registar como mediador(a) tem de aceitar os termos específicos de mediação.",
         # Nav
