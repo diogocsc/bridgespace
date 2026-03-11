@@ -12,3 +12,4 @@ stripe
 markdown>=3.5
 pytest
 pytest-flask
+psycopg2-binary>=2.9

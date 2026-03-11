@@ -94,7 +94,7 @@ LOCALES: Dict[str, Dict[str, str]] = {
         "translate_note": "Uses Google Translate in-page. It loads only when you open this panel.",
         "close": "Close",
         # Footer
-        "footer_terms": "Terms for mediators",
+        "footer_terms": "Terms of use",
         "footer_privacy": "Privacy policy",
         "footer_contact": "Contact",
         "footer_address": "Rua Câmara Pestana, 2, 2710-531 Sintra, Portugal",
@@ -534,7 +534,7 @@ LOCALES: Dict[str, Dict[str, str]] = {
         "translate_note": "Utiliza o Google Translate na página. Só é carregado quando abre este painel.",
         "close": "Fechar",
         # Footer
-        "footer_terms": "Termos para mediadores",
+        "footer_terms": "Termos de utilização",
         "footer_privacy": "Política de privacidade",
         "footer_contact": "Contacto",
         "footer_address": "Rua Câmara Pestana, 2, 2710-531 Sintra, Portugal",

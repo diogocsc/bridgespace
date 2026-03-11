@@ -1,5 +1,5 @@
 """
-BridgeSpace - Legal pages (privacy policy, terms for mediators).
+BridgeSpace - Legal pages (privacy policy, terms of use).
 Serves the markdown documents from legal/ as HTML.
 Company data (name, address, email, phone, fiscal number) is replaced from admin settings.
 """
@@ -37,7 +37,7 @@ def privacy():
 
 @legal_bp.route("/termos-mediadores")
 def terms_mediators():
-    """Terms for mediators (PT)."""
+    """Terms of use (PT) – all users and mediators."""
     path = _legal_path("termos-mediadores-pt.md")
     html = _md_to_html(path)
     return render_template(

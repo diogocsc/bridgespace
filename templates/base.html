@@ -238,7 +238,7 @@
     <div class="footer-links">
       <a href="{{ url_for('legal.privacy') }}">{{ t.footer_privacy | default('Privacy policy') }}</a>
       <span class="footer-sep">·</span>
-      <a href="{{ url_for('legal.terms_mediators') }}">{{ t.footer_terms | default('Terms for mediators') }}</a>
+      <a href="{{ url_for('legal.terms_mediators') }}">{{ t.footer_terms | default('Terms of use') }}</a>
       {% if company_contact_email or company_contact_phone %}
       <span class="footer-sep">·</span>
       <span class="footer-contact">

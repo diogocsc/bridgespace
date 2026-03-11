@@ -6,7 +6,7 @@ Esta pasta contém modelos de documentos legais em português para a plataforma 
 
 | Ficheiro | Descrição |
 |----------|-----------|
-| `termos-mediadores-pt.md` | Termos específicos para mediadores (pagamentos, IBAN, telemóvel, calendário de pagamento, responsabilidade). |
+| `termos-mediadores-pt.md` | Termos de utilização (utilizadores e mediadores): boa-fé, conduta, direito de eliminar conta; secções específicas para mediadores (pagamentos, subscrições, responsabilidade). |
 | `politica-privacidade-pt.md` | Política de privacidade (RGPD; uso de dados de pagamento e contactos apenas para o serviço e transações; contacto e morada do responsável). |
 
 ## Ações pendentes
