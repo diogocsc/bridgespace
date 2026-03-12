@@ -51,6 +51,9 @@ def create_app(test_config=None):
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@bridgespace.app')
 
+    # Human-readable app name (for emails, headings, etc.)
+    app.config['APP_NAME'] = os.environ.get('APP_NAME', 'BridgeSpace')
+
     # Optional fixed public base URL (e.g. https://mediador.diogocordeiro.pt)
     # Used as a fallback when building absolute links outside a request context.
     app.config['PUBLIC_BASE_URL'] = os.environ.get('PUBLIC_BASE_URL', '').rstrip('/')

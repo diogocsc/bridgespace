@@ -142,6 +142,8 @@ def dispatch_to_user_channels(user, subject, html_body, plain_body=None, link_ur
 
 def _wrap(title, content, lang=None):
     """Shared branded HTML email wrapper."""
+    app_name = current_app.config.get("APP_NAME", "BridgeSpace")
+
     if lang is None:
         try:
             lang = _email_lang_default()
@@ -149,12 +151,12 @@ def _wrap(title, content, lang=None):
             lang = "en"
     if lang == "pt":
         footer_text = (
-            "Esta mensagem foi enviada pelo BridgeSpace. "
+            f"Esta mensagem foi enviada pelo {app_name}. "
             "Todo o conteúdo da mediação é estritamente confidencial."
         )
     else:
         footer_text = (
-            "This message was sent by BridgeSpace. "
+            f"This message was sent by {app_name}. "
             "All mediation content is strictly confidential."
         )
     return f"""<!DOCTYPE html>
@@ -173,8 +175,8 @@ body{{font-family:Georgia,serif;background:#F5F0E8;margin:0;padding:0}}
 hr{{border:none;border-top:1px solid #DDD8CE;margin:1.2rem 0}}
 .f{{padding:18px 36px;background:#F0EBE1;font-size:.76rem;color:#7A7A7A;
     border-top:1px solid #DDD8CE}}
-</style></head><body><div class="w">
-<div class="h"><h1>Bridge<span>Space</span></h1></div>
+    </style></head><body><div class="w">
+<div class="h"><h1>{app_name}</h1></div>
 <div class="b"><h2>{title}</h2>{content}</div>
 <div class="f">{footer_text}</div>
 </div></body></html>"""
@@ -229,6 +231,7 @@ def _lang_for_contact(contact: str) -> str:
 def send_verification_email(user):
     """Email address verification link for newly registered users."""
     url = _external_url("auth.verify_email", token=user.verification_token)
+    app_name = current_app.config.get("APP_NAME", "BridgeSpace")
     lang = _lang_for_user(user)
     if lang == "pt":
         c = (
@@ -238,7 +241,7 @@ def send_verification_email(user):
             f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
             f"<p>Esta ligação é válida durante <strong>48 horas</strong>.</p>"
         )
-        subject = "Confirme a sua conta BridgeSpace"
+        subject = f"Confirme a sua conta {app_name}"
         title = "Confirmar endereço de e-mail"
     else:
         c = (
@@ -248,7 +251,7 @@ def send_verification_email(user):
             f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
             f"<p>This link is valid for <strong>48 hours</strong>.</p>"
         )
-        subject = "Verify your BridgeSpace account"
+        subject = f"Verify your {app_name} account"
         title = "Confirm your email address"
     return _send_email(subject, [user.email], _wrap(title, c, lang))
 
@@ -256,28 +259,29 @@ def send_verification_email(user):
 def send_password_reset_email(user):
     """Password-reset link."""
     url = _external_url("auth.reset_password", token=user.reset_token)
+    app_name = current_app.config.get("APP_NAME", "BridgeSpace")
     lang = _lang_for_user(user)
     if lang == "pt":
         c = (
             f"<p>Olá <strong>{user.display_name}</strong>,</p>"
-            f"<p>Reponha a sua palavra-passe do BridgeSpace:</p>"
+            f"<p>Reponha a sua palavra-passe do {app_name}:</p>"
             f"<a href='{url}' class='btn'>Repor palavra-passe</a><hr>"
             f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
             f"<p>A ligação expira em <strong>1 hora</strong>. "
             f"Ignore esta mensagem se não fez este pedido.</p>"
         )
-        subject = "Repor palavra-passe BridgeSpace"
+        subject = f"Repor palavra-passe {app_name}"
         title = "Pedido de reposição de palavra-passe"
     else:
         c = (
             f"<p>Hi <strong>{user.display_name}</strong>,</p>"
-            f"<p>Reset your BridgeSpace password:</p>"
+            f"<p>Reset your {app_name} password:</p>"
             f"<a href='{url}' class='btn'>Reset my password</a><hr>"
             f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
             f"<p>Expires in <strong>1 hour</strong>. "
             f"Ignore this if you did not make this request.</p>"
         )
-        subject = "Reset your BridgeSpace password"
+        subject = f"Reset your {app_name} password"
         title = "Password reset request"
     return _send_email(subject, [user.email], _wrap(title, c, lang))
 
