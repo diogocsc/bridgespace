@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv, dotenv_values
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Load .env from the directory containing this file (project root), so it works
 # regardless of the current working directory when starting the app.
@@ -66,6 +67,17 @@ def create_app(test_config=None):
     bcrypt.init_app(app)
     socketio.init_app(app, cors_allowed_origins="*")
     mail.init_app(app)
+
+    # Honour X-Forwarded-* from reverse proxies (nginx) so url_for(_external=True)
+    # and redirects use the public host/scheme (e.g. mediador.diogocordeiro.pt, https).
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=1,
+        x_proto=1,
+        x_host=1,
+        x_port=1,
+        x_prefix=1,
+    )
 
     from models import User
     @login_manager.user_loader
