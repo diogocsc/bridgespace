@@ -847,7 +847,7 @@ LOCALES: Dict[str, Dict[str, str]] = {
         "advance_phase_btn": "Avançar fase →",
         "advance_phase_confirm": "Avançar para a próxima fase? Esta ação não pode ser desfeita.",
         "advance_warning_payment_pending": "Aviso: os pagamentos obrigatórios ainda não foram efetuados. Só poderá encerrar a mediação quando todas as partes obrigatórias tiverem pago.",
-        "pricing_intro": "O mediador definiu o tipo de pagamento desta mediação. Conclua o passo abaixo para continuar.",
+        "pricing_intro": "O mediador definiu o tipo de pagamento desta mediação.",
         "pricing_intro_probono": "Esta mediação é pro bono — não é necessário pagamento.",
         "confirm_probono": "Confirmar pro bono",
         "donation_amount_label": "O seu contributo (EUR)",

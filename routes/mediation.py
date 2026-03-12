@@ -1373,7 +1373,30 @@ def download_agreement_pdf(mediation_id):
     med = _get_med(mediation_id)
     _require_participant(med)
     agr = med.agreement
-    if not agr or not (agr.content or "").strip():
+    # Determine agreement text:
+    # - Structured: use Agreement.content when available
+    # - Unstructured: if no Agreement record, use the marked agreement post content
+    content_text = None
+    if agr and (agr.content or "").strip():
+        content_text = (agr.content or "").strip()
+    elif getattr(med, "mediation_type", "structured") == "unstructured" and med.agreement_post:
+        try:
+            body = med.agreement_post.get_display_content()
+        except Exception:
+            body = med.agreement_post.original_content or ""
+        parts = []
+        if body:
+            parts.append(body.strip())
+        # Optionally append outcome/justification if present
+        if getattr(med, "close_outcome", None):
+            outcome = med.close_outcome
+            parts.append(f"[Outcome: {outcome}]")
+        if getattr(med, "close_justification", None):
+            just = (med.close_justification or "").strip()
+            if just:
+                parts.append(just)
+        content_text = "\n\n".join(parts).strip()
+    if not content_text:
         flash("No agreement drafted yet.", "warning")
         return redirect(url_for("mediation.agreement", mediation_id=mediation_id))
     try:
@@ -1407,10 +1430,7 @@ def download_agreement_pdf(mediation_id):
         story.append(Paragraph(title, title_style))
         story.append(Spacer(1, 12))
 
-        content = (agr.content or "").strip()
-        if not content:
-            content = ""
-
+        content = content_text
         # Split paragraphs by blank lines and preserve line breaks within each paragraph
         paragraphs = [p for p in content.split("\n\n") if p.strip()] or [""]
         for para in paragraphs:

@@ -76,6 +76,10 @@
     <p class="text-sm text-muted" style="margin-top:0.35rem;">
       {{ t.pricing_type_donation }}{% if mediation.price_per_party_cents > 0 %} — {{ t.suggested_minimum }}: {{ '%.2f' % (mediation.price_per_party_cents / 100.0) }} {{ mediation.currency }} {{ t.per_party }}{% endif %}
     </p>
+    {% elif (mediation.pricing_type or 'fixed') == 'probono' %}
+    <p class="text-sm text-muted" style="margin-top:0.35rem;">
+      {{ t.pricing_intro_probono }}
+    </p>
     {% endif %}
     {% if mediation.description %}
       <p style="margin-top:0.7rem; color:var(--muted); max-width:600px;">{{ mediation.description }}</p>

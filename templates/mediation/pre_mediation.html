@@ -76,11 +76,24 @@
             var row = document.getElementById('price-row');
             var summary = document.getElementById('price-commission-summary');
             var priceInput = document.getElementById('price-per-party-input');
+            var pricingSummaryLine = document.getElementById('pricing-summary-line');
+            var pricingProbonoLabel = {{ t.pricing_type_probono | tojson }};
+            var form = sel ? sel.form : null;
             if (!sel || !row) return;
             function toggle(){ row.style.display = row.dataset.show === 'true' ? '' : 'none'; }
             row.dataset.show = sel.value !== 'probono' ? 'true' : 'false';
             toggle();
-            sel.addEventListener('change', function(){ row.dataset.show = this.value !== 'probono' ? 'true' : 'false'; toggle(); });
+            sel.addEventListener('change', function(){
+              row.dataset.show = this.value !== 'probono' ? 'true' : 'false';
+              toggle();
+              if (pricingSummaryLine && this.value === 'probono') {
+                pricingSummaryLine.textContent = pricingProbonoLabel;
+              }
+              // Automatically submit form when switching to pro bono so pricing section updates
+              if (form && this.value === 'probono') {
+                form.submit();
+              }
+            });
             if (!priceInput || !summary) return;
             var nParties = {{ n_required_parties }};
             var totalLabel = {{ t.total_required_parties_label | tojson }};
@@ -252,7 +265,7 @@
       <p class="text-sm text-muted" style="margin-bottom:0.75rem">
         {{ t.pricing_intro }}
       </p>
-      <div style="font-weight:600;margin-bottom:0.25rem">
+      <div id="pricing-summary-line" style="font-weight:600;margin-bottom:0.25rem">
         {% if (mediation.pricing_type or 'fixed') == 'fixed' %}
           {{ t.pricing_type_fixed }}: <span style="font-weight:700;font-size:1.2rem;color:var(--charcoal)">{{ '%.2f' % (mediation.price_per_party_cents / 100.0) }} {{ mediation.currency }}</span> <span class="text-sm text-muted" style="font-weight:500">{{ t.per_party }}</span>
         {% elif (mediation.pricing_type or 'fixed') == 'donation' %}
