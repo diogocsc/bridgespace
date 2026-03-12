@@ -4,7 +4,7 @@ Handles email and SMS for invitations, verification, and status alerts.
 """
 import logging
 import re
-from flask import current_app, url_for
+from flask import current_app, url_for, request
 from flask_mail import Message
 from extensions import mail
 
@@ -12,6 +12,30 @@ logger = logging.getLogger(__name__)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
+
+
+def _external_url(endpoint: str, **values) -> str:
+    """
+    Build an absolute URL for emails.
+
+    Priority:
+    1. If PUBLIC_BASE_URL is set (e.g. https://mediador.diogocordeiro.pt),
+       always use that as base, regardless of current request host.
+    2. Otherwise, if inside a request context, rely on url_for(_external=True)
+       together with ProxyFix + X-Forwarded-* from nginx.
+    3. As a last resort, fall back to url_for(_external=True) even without a request,
+       which will use SERVER_NAME / default host.
+    """
+    base = (current_app.config.get("PUBLIC_BASE_URL") or "").strip()
+    if base:
+        path = url_for(endpoint, _external=False, **values)
+        return base.rstrip("/") + path
+    try:
+        # Normal case: we are inside a request and ProxyFix + nginx give the right host/scheme
+        return url_for(endpoint, _external=True, **values)
+    except RuntimeError:
+        # No request context; fall back to app-level URL building
+        return url_for(endpoint, _external=True, **values)
 
 def _send_email(subject, recipients, html_body, text_body=""):
     try:
@@ -204,8 +228,7 @@ def _lang_for_contact(contact: str) -> str:
 
 def send_verification_email(user):
     """Email address verification link for newly registered users."""
-    url = url_for("auth.verify_email",
-                  token=user.verification_token, _external=True)
+    url = _external_url("auth.verify_email", token=user.verification_token)
     lang = _lang_for_user(user)
     if lang == "pt":
         c = (
@@ -232,8 +255,7 @@ def send_verification_email(user):
 
 def send_password_reset_email(user):
     """Password-reset link."""
-    url = url_for("auth.reset_password",
-                  token=user.reset_token, _external=True)
+    url = _external_url("auth.reset_password", token=user.reset_token)
     lang = _lang_for_user(user)
     if lang == "pt":
         c = (
@@ -262,8 +284,7 @@ def send_password_reset_email(user):
 
 def send_mediation_invitation_email(invitation, mediation, invited_by):
     """Invite an external party by email."""
-    url = url_for("mediation.join_via_invite",
-                  token=invitation.token, _external=True)
+    url = _external_url("mediation.join_via_invite", token=invitation.token)
     mode_en = ("Asynchronous — reply at your own pace"
                if mediation.mode == "async" else "Live — real-time session")
     mode_pt = ("Assíncrono — responder ao seu ritmo"
@@ -313,8 +334,7 @@ def send_mediation_invitation_email(invitation, mediation, invited_by):
 
 def send_mediation_invitation_sms(invitation, mediation, invited_by):
     """Invite an external party by SMS."""
-    url = url_for("mediation.join_via_invite",
-                  token=invitation.token, _external=True)
+    url = _external_url("mediation.join_via_invite", token=invitation.token)
     body = (f"BridgeSpace: {invited_by.display_name} invited you to "
             f'mediation "{mediation.title}". Join: {url}')
     return _send_sms(invitation.contact, body)
@@ -332,8 +352,7 @@ def send_new_post_notification(post, mediation):
     participants = MediationParticipant.query.filter_by(
         mediation_id=mediation.id, is_active=True
     ).all()
-    url = url_for("mediation.session",
-                  mediation_id=mediation.id, _external=True)
+    url = _external_url("mediation.session", mediation_id=mediation.id)
     success = True
     for p in participants:
         if p.user_id == post.author_id:
@@ -359,8 +378,7 @@ def send_mediation_status_change(mediation, new_status):
     participants = MediationParticipant.query.filter_by(
         mediation_id=mediation.id, is_active=True
     ).all()
-    url = url_for("mediation.session",
-                  mediation_id=mediation.id, _external=True)
+    url = _external_url("mediation.session", mediation_id=mediation.id)
     labels = {
         "active":  {
             "en": ("Mediation is now active",
@@ -434,11 +452,7 @@ def send_ask_mediator_explanation_email(mediation, requested_by):
     mediator = mediation.mediator
     if not mediator:
         return False
-    url = url_for(
-        "mediation.pre_mediation",
-        mediation_id=mediation.id,
-        _external=True,
-    )
+    url = _external_url("mediation.pre_mediation", mediation_id=mediation.id)
     requester_name = requested_by.display_name or requested_by.username or "A participant"
     lang = _lang_for_user(mediator)
     if lang == "pt":
@@ -475,11 +489,7 @@ def send_pre_mediation_confirmation_request(mediation):
     who have not yet acknowledged, asking them to confirm they have read the explanation.
     """
     from models import MediationParticipant
-    url = url_for(
-        "mediation.pre_mediation",
-        mediation_id=mediation.id,
-        _external=True,
-    )
+    url = _external_url("mediation.pre_mediation", mediation_id=mediation.id)
     # Required parties (non-mediator, is_required) who have not acknowledged yet
     participants = [
         p for p in mediation.participants
@@ -534,10 +544,9 @@ def send_mediator_availability_request(mediation, mediator_user):
     """
     if not mediator_user:
         return False
-    confirm_url = url_for(
+    confirm_url = _external_url(
         "mediation.confirm_mediator_availability",
         mediation_id=mediation.id,
-        _external=True,
     )
     lang = _lang_for_user(mediator_user)
     if lang == "pt":
@@ -576,7 +585,7 @@ def send_mediator_unconfirmed_alert_to_admins(mediation):
     admins = User.query.filter(User.role.in_(("admin", "superadmin"))).all()
     if not admins:
         return True
-    url = url_for("mediation.session", mediation_id=mediation.id, _external=True)
+    url = _external_url("mediation.session", mediation_id=mediation.id)
     lang = _email_lang_default()
     if lang == "pt":
         c = (
@@ -614,7 +623,7 @@ def send_payment_config_changed_notification():
     admins = User.query.filter(User.role.in_(("admin", "superadmin"))).all()
     if not admins:
         return True
-    url = url_for("admin.payment_settings", _external=True)
+    url = _external_url("admin.payment_settings")
     lang = _email_lang_default()
     if lang == "pt":
         c = (

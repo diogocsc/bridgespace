@@ -51,6 +51,10 @@ def create_app(test_config=None):
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@bridgespace.app')
 
+    # Optional fixed public base URL (e.g. https://mediador.diogocordeiro.pt)
+    # Used as a fallback when building absolute links outside a request context.
+    app.config['PUBLIC_BASE_URL'] = os.environ.get('PUBLIC_BASE_URL', '').rstrip('/')
+
     # reCAPTCHA v2 for public forms (login, register, forgot/reset password)
     app.config['RECAPTCHA_SITE_KEY'] = os.environ.get('RECAPTCHA_SITE_KEY', '')
     app.config['RECAPTCHA_SECRET_KEY'] = os.environ.get('RECAPTCHA_SECRET_KEY', '')
