@@ -1384,18 +1384,8 @@ def download_agreement_pdf(mediation_id):
             body = med.agreement_post.get_display_content()
         except Exception:
             body = med.agreement_post.original_content or ""
-        parts = []
         if body:
-            parts.append(body.strip())
-        # Optionally append outcome/justification if present
-        if getattr(med, "close_outcome", None):
-            outcome = med.close_outcome
-            parts.append(f"[Outcome: {outcome}]")
-        if getattr(med, "close_justification", None):
-            just = (med.close_justification or "").strip()
-            if just:
-                parts.append(just)
-        content_text = "\n\n".join(parts).strip()
+            content_text = body.strip()
     if not content_text:
         flash("No agreement drafted yet.", "warning")
         return redirect(url_for("mediation.agreement", mediation_id=mediation_id))

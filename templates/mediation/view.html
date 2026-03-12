@@ -91,6 +91,12 @@
     {{ t.close_mediation_btn | default('Close mediation') }}
   </button>
   {% endif %}
+  {% if is_unstructured and mediation.status == 'closed' and mediation.agreement_post_id %}
+  <a href="{{ url_for('mediation.download_agreement_pdf', mediation_id=mediation.id) }}"
+     class="btn btn-outline btn-sm">
+    {{ t.export_agreement_pdf }}
+  </a>
+  {% endif %}
   {% if mediation.status != 'closed' %}
   <a href="{{ url_for('mediation.invite_page', mediation_id=mediation.id) }}"
      class="btn btn-outline btn-sm">
