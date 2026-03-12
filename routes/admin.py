@@ -193,7 +193,16 @@ def delete_mediation(mediation_id):
         snapshot=json.dumps(snapshot, default=str),
     )
     db.session.add(log_entry)
-    med.agreement_post_id = None  # avoid FK constraint when cascade-deleting posts
+
+    # Clean up related objects that do not have ON DELETE CASCADE FKs
+    # Invitations cannot have mediation_id set to NULL, so delete them explicitly.
+    invitations = getattr(med, "invitations", []) or []
+    for inv in invitations:
+        db.session.delete(inv)
+
+    # Avoid FK constraint from Agreement.post_id → Post.id when deleting posts
+    med.agreement_post_id = None
+
     db.session.delete(med)
     db.session.commit()
     flash("Mediation deleted. The deletion has been recorded in the audit log.", "success")
