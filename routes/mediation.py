@@ -375,15 +375,16 @@ def request_mediation():
 
         _invite_mediator_and_notify(med, mediator_user)
 
-        # Requester joins immediately
-        db.session.add(MediationParticipant(
-            mediation_id=med.id,
-            user_id=current_user.id,
-            role='requester',
-            display_name=current_user.display_name or current_user.username,
-        ))
+        # Requester joins immediately (only if they are not also the mediator)
+        if mediator_user.id != current_user.id:
+            db.session.add(MediationParticipant(
+                mediation_id=med.id,
+                user_id=current_user.id,
+                role='requester',
+                display_name=current_user.display_name or current_user.username,
+            ))
 
-        # Mediator is also a participant for access
+        # Mediator is also a participant for access (always)
         db.session.add(MediationParticipant(
             mediation_id=med.id,
             user_id=mediator_user.id,
@@ -496,13 +497,16 @@ def create_mediation():
         if mediator_user.id != current_user.id:
             _invite_mediator_and_notify(med, mediator_user)
 
-        db.session.add(MediationParticipant(
-            mediation_id=med.id,
-            user_id=current_user.id,
-            role='requester',
-            display_name=current_user.display_name or current_user.username,
-        ))
+        # Creator joins as requester only if they are not also the mediator
+        if mediator_user.id != current_user.id:
+            db.session.add(MediationParticipant(
+                mediation_id=med.id,
+                user_id=current_user.id,
+                role='requester',
+                display_name=current_user.display_name or current_user.username,
+            ))
 
+        # Mediator is always present as a participant with role 'mediator'
         db.session.add(MediationParticipant(
             mediation_id=med.id,
             user_id=mediator_user.id,
