@@ -1395,6 +1395,26 @@ def download_agreement_pdf(mediation_id):
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet
 
+        def _normalize_for_pdf(text: str) -> str:
+            """
+            Normalize Unicode punctuation so it renders correctly in basic PDF fonts.
+            In particular, replace various dash characters with a standard hyphen-minus.
+            """
+            if not text:
+                return ""
+            replacements = {
+                "\u2010": "-",  # hyphen
+                "\u2011": "-",  # non-breaking hyphen
+                "\u2012": "-",  # figure dash
+                "\u2013": "-",  # en dash
+                "\u2014": "-",  # em dash
+                "\u2212": "-",  # minus sign
+                "\u00A0": " ",  # non-breaking space
+            }
+            for src, dst in replacements.items():
+                text = text.replace(src, dst)
+            return text
+
         buffer = BytesIO()
         doc = SimpleDocTemplate(
             buffer,
@@ -1416,11 +1436,11 @@ def download_agreement_pdf(mediation_id):
         body_style.leading = 14
 
         story = []
-        title = med.title or "Mediation agreement"
-        story.append(Paragraph(title, title_style))
+        title_text = med.title or "Mediation agreement"
+        story.append(Paragraph(_normalize_for_pdf(title_text), title_style))
         story.append(Spacer(1, 12))
 
-        content = content_text
+        content = _normalize_for_pdf(content_text)
         # Split paragraphs by blank lines and preserve line breaks within each paragraph
         paragraphs = [p for p in content.split("\n\n") if p.strip()] or [""]
         for para in paragraphs:
@@ -1430,7 +1450,11 @@ def download_agreement_pdf(mediation_id):
 
         doc.build(story)
         buffer.seek(0)
-        filename = f"agreement-{med.id}.pdf"
+        # Build a filename that includes a slugified version of the mediation title
+        import re
+        raw_title = med.title or ""
+        slug = re.sub(r"[^A-Za-z0-9]+", "-", raw_title).strip("-") or "agreement"
+        filename = f"agreement-{slug}-{med.id}.pdf"
         return send_file(
             buffer,
             as_attachment=True,

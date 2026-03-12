@@ -154,18 +154,25 @@ def draft_agreement(mediation_title: str, accepted_proposals: list, lang: str = 
 
     context_lines = []
     for item in accepted_proposals:
-        context_lines.append(f"** {item['agenda_point']} **")
+        context_lines.append(f"Agenda point: {item['agenda_point']}")
         for prop in item["proposals"]:
-            context_lines.append(f"  - {prop}")
+            context_lines.append(f"Proposal: {prop}")
     context = "\n".join(context_lines)
     lang_name = _lang_name(lang)
 
     prompt = f"""You are a professional mediator drafting a formal agreement.
 Use neutral, clear, and constructive language.
-Structure the agreement with: an introduction, numbered clauses for each
-agreed point, and a closing statement.
+Structure the agreement as a final text that the parties could sign in court or before a notary:
+- Start with an introduction identifying the mediation and the parties in plain text
+- Then write numbered clauses (1., 2., 3., …) covering each agreed point
+- Finish with a short closing statement
 Do NOT add signatures — those will be added separately.
 Write the agreement in {lang_name}.
+
+The text must be suitable for direct export to PDF and legal use:
+- Use only plain characters that are widely supported (avoid fancy bullets, emojis or unusual symbols)
+- Use simple ASCII hyphens '-' instead of long dashes (–, —)
+- Do not use markdown, asterisks (*) or rich formatting — only plain paragraphs and simple numbering.
 
 Mediation title: {mediation_title}
 
