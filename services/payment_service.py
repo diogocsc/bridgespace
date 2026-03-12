@@ -132,14 +132,11 @@ def start_subscription_checkout(user, plan: str) -> str:
 
     amount_cents = int(round(amount_eur * 100))
 
-    success_url = url_for(
-        "mediation.payout_settings",
-        _external=True,
-    ) + "?billing=success"
-    cancel_url = url_for(
-        "mediation.payout_settings",
-        _external=True,
-    )
+    # Build success/cancel URLs using same PUBLIC_BASE_URL-aware helper as emails.
+    from services.notification import _external_url  # lazy import to avoid cycles
+    base_success = _external_url("mediation.payout_settings")
+    success_url = base_success + ("&" if "?" in base_success else "?") + "billing=success"
+    cancel_url = _external_url("mediation.payout_settings")
 
     try:
         session = stripe.checkout.Session.create(
@@ -180,14 +177,10 @@ def start_bulk_pack_checkout(user, pack_size: int) -> str:
     price_per_med = bulk_price_per_mediation_eur()
     amount_cents = int(round(price_per_med * pack_size * 100))
 
-    success_url = url_for(
-        "mediation.payout_settings",
-        _external=True,
-    ) + "?billing=success"
-    cancel_url = url_for(
-        "mediation.payout_settings",
-        _external=True,
-    )
+    from services.notification import _external_url  # lazy import to avoid cycles
+    base_success = _external_url("mediation.payout_settings")
+    success_url = base_success + ("&" if "?" in base_success else "?") + "billing=success"
+    cancel_url = _external_url("mediation.payout_settings")
 
     try:
         session = stripe.checkout.Session.create(
