@@ -9,7 +9,7 @@ routes/mediation.py — Full mediation workflow
 from datetime import datetime
 
 from flask import (Blueprint, render_template, redirect, url_for,
-                   flash, request, abort, jsonify)
+                   flash, request, abort, jsonify, send_file)
 from flask_login import login_required, current_user
 from flask_socketio import join_room, leave_room, emit
 
@@ -329,11 +329,80 @@ def mediation_payments(mediation_id):
         .order_by(MediationPayment.created_at.desc())
         .all()
     )
+    # Participant-level view: all active non-mediator participants with paid flag
+    from services.settings_service import is_participant_paid
+    participant_rows = []
+    for p in med.participants:
+        if p.role == "mediator" or not getattr(p, "is_active", True):
+            continue
+        participant_rows.append({
+            "id": p.id,
+            "display_name": p.display_name or (p.user.display_name if p.user else (p.user.username if p.user else "")),
+            "is_required": getattr(p, "is_required", True),
+            "paid": is_participant_paid(med.id, p.id),
+        })
     return render_template(
         'mediation/mediation_payments.html',
         mediation=med,
         payments=payments,
+        participant_rows=participant_rows,
     )
+
+
+@mediation_bp.route('/mediation/<int:mediation_id>/payments/mark', methods=['POST'])
+@login_required
+def mark_participant_payment(mediation_id):
+    """Mediator toggles whether a given participant has paid (manual tracking)."""
+    med = _get_med(mediation_id)
+    if med.mediator_id != current_user.id:
+        abort(403)
+    participant_id = request.form.get('participant_id', type=int)
+    paid_flag = request.form.get('paid', '0') == '1'
+    if not participant_id:
+        return redirect(url_for('mediation.mediation_payments', mediation_id=mediation_id))
+    participant = MediationParticipant.query.filter_by(id=participant_id, mediation_id=med.id).first()
+    if not participant or participant.role == "mediator":
+        return redirect(url_for('mediation.mediation_payments', mediation_id=mediation_id))
+    from datetime import datetime as dt
+    from services.settings_service import is_participant_paid
+    already_paid = is_participant_paid(med.id, participant.id)
+    if paid_flag and not already_paid:
+        # Create a manual payment record marked as paid
+        amount_cents = med.price_per_party_cents or 0
+        kind = med.pricing_type or "standard"
+        if kind not in ("fixed", "donation", "probono"):
+            kind = "standard"
+        if kind == "fixed":
+            kind = "standard"
+        pay = MediationPayment(
+            mediation_id=med.id,
+            participant_id=participant.id,
+            payer_user_id=participant.user_id,
+            provider="manual",
+            status="paid",
+            kind=kind,
+            amount_cents=amount_cents,
+            platform_commission_cents=0,
+            mediator_payout_cents=amount_cents,
+            currency=med.currency or "EUR",
+            created_at=dt.utcnow(),
+            paid_at=dt.utcnow(),
+        )
+        db.session.add(pay)
+        db.session.commit()
+    elif (not paid_flag) and already_paid:
+        # Mark any manual payments for this participant as cancelled
+        manual_payments = MediationPayment.query.filter_by(
+            mediation_id=med.id,
+            participant_id=participant.id,
+            provider="manual",
+            status="paid",
+        ).all()
+        if manual_payments:
+            for pay in manual_payments:
+                pay.status = "cancelled"
+            db.session.commit()
+    return redirect(url_for('mediation.mediation_payments', mediation_id=mediation_id))
 
 
 # ---------------------------------------------------------------------------
@@ -1136,7 +1205,8 @@ def agenda(mediation_id):
 
         if action == 'ai_suggest':
             try:
-                suggestions = extract_agenda_points([p.content for p in med.perspectives])
+                lang = getattr(current_user, "preferred_language", "en") or "en"
+                suggestions = extract_agenda_points([p.content for p in med.perspectives], lang=lang)
                 for i, s in enumerate(suggestions):
                     db.session.add(AgendaPoint(
                         mediation_id=med.id,
@@ -1236,7 +1306,8 @@ def agreement(mediation_id):
                     for ap in med.agenda_points
                     if any(p.status == 'accepted' for p in ap.proposals)
                 ]
-                content = draft_agreement(med.title, accepted)
+                lang = getattr(current_user, "preferred_language", "en") or "en"
+                content = draft_agreement(med.title, accepted, lang=lang)
                 if agr:
                     agr.content = content
                 else:
@@ -1293,6 +1364,72 @@ def agreement(mediation_id):
         participant=participant,
         show_consent_search=show_consent_search,
     )
+
+
+@mediation_bp.route('/mediation/<int:mediation_id>/agreement.pdf')
+@login_required
+def download_agreement_pdf(mediation_id):
+    """Export the current agreement text to a simple PDF."""
+    med = _get_med(mediation_id)
+    _require_participant(med)
+    agr = med.agreement
+    if not agr or not (agr.content or "").strip():
+        flash("No agreement drafted yet.", "warning")
+        return redirect(url_for("mediation.agreement", mediation_id=mediation_id))
+    try:
+        from io import BytesIO
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            leftMargin=40,
+            rightMargin=40,
+            topMargin=60,
+            bottomMargin=40,
+        )
+        styles = getSampleStyleSheet()
+        title_style = styles["Heading1"]
+        title_style.fontName = "Helvetica-Bold"
+        title_style.fontSize = 16
+        title_style.leading = 20
+
+        body_style = styles["Normal"]
+        body_style.fontName = "Helvetica"
+        body_style.fontSize = 10
+        body_style.leading = 14
+
+        story = []
+        title = med.title or "Mediation agreement"
+        story.append(Paragraph(title, title_style))
+        story.append(Spacer(1, 12))
+
+        content = (agr.content or "").strip()
+        if not content:
+            content = ""
+
+        # Split paragraphs by blank lines and preserve line breaks within each paragraph
+        paragraphs = [p for p in content.split("\n\n") if p.strip()] or [""]
+        for para in paragraphs:
+            safe_para = para.replace("\n", "<br/>")
+            story.append(Paragraph(safe_para, body_style))
+            story.append(Spacer(1, 8))
+
+        doc.build(story)
+        buffer.seek(0)
+        filename = f"agreement-{med.id}.pdf"
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/pdf",
+        )
+    except Exception as exc:
+        flash(f"Could not generate PDF: {exc}", "danger")
+        return redirect(url_for("mediation.agreement", mediation_id=mediation_id))
 
 
 @mediation_bp.route('/mediation/<int:mediation_id>/consent-search', methods=['POST'])

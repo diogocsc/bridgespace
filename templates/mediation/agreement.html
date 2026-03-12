@@ -32,8 +32,8 @@
     {# AI draft (mediator only) #}
     {% if current_user.id == mediation.mediator_id %}
     <div class="card" style="margin-bottom:1rem;border-left:3px solid var(--sage)">
-      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.5rem">✨ AI Draft</h3>
-      <p class="text-sm text-muted" style="margin-bottom:0.75rem">Generate agreement text from all accepted proposals.</p>
+      <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.5rem">✨ {{ t.ai_draft_title }}</h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">{{ t.ai_draft_intro }}</p>
       <form method="POST">
         <input type="hidden" name="action" value="ai_draft">
         <button type="submit" class="btn btn-primary btn-sm" style="width:100%;justify-content:center">Draft agreement</button>
@@ -63,7 +63,14 @@
 
   {# Right: agreement editor / viewer #}
   <div class="card">
-    <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem">Agreement text</h3>
+    <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem">
+      Agreement text
+      {% if current_user.id == mediation.mediator_id %}
+      <span class="badge" style="font-size:0.7rem;margin-left:0.4rem;background:#E8F0EE;color:var(--sage-dark);">
+        {{ t.role_mediator }}
+      </span>
+      {% endif %}
+    </h3>
 
     {% if current_user.id == mediation.mediator_id and mediation.phase == 'agreement' %}
     <form method="POST" style="margin-bottom:1rem">
@@ -94,6 +101,12 @@
           </button>
         </form>
       {% endif %}
+      <div style="margin-top:0.75rem; text-align:right;">
+        <a href="{{ url_for('mediation.download_agreement_pdf', mediation_id=mediation.id) }}"
+           class="btn btn-outline btn-sm">
+          {{ t.export_agreement_pdf }}
+        </a>
+      </div>
     {% endif %}
 
     {% if show_consent_search and participant %}

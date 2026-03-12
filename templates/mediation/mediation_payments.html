@@ -10,6 +10,53 @@
     {{ t.mediation_payments_intro | default('Mark payments as received when parties have paid you. This does not affect platform billing; it is for your own tracking and allows closing the mediation when required.') }}
   </p>
 
+  {% if participant_rows %}
+  <div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="font-size:0.95rem;font-weight:600;margin-bottom:0.5rem;">
+      {{ t.participant_payments_title | default('Participant payments') }}
+    </h2>
+    <p class="text-sm text-muted" style="margin-bottom:0.75rem;">
+      {{ t.participant_payments_hint | default('For each party, mark whether you have received their payment. This controls whether all required parties are considered paid for closing the mediation.') }}
+    </p>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);text-align:left">
+          <th style="padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.participants | default('Participant') }}</th>
+          <th style="padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.invitation_required | default('Required') }}</th>
+          <th style="padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.status_paid | default('Paid') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in participant_rows %}
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ row.display_name }}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.85rem;">
+            {% if row.is_required %}
+              {{ t.invitation_required | default('Required') }}
+            {% else %}
+              {{ t.invitation_optional | default('Optional') }}
+            {% endif %}
+          </td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem;">
+            <form method="post" action="{{ url_for('mediation.mark_participant_payment', mediation_id=mediation.id) }}">
+              <input type="hidden" name="participant_id" value="{{ row.id }}">
+              <input type="hidden" name="paid" value="{{ 0 if row.paid else 1 }}">
+              <button type="submit" class="btn btn-outline btn-xs">
+                {% if row.paid %}
+                  {{ t.mark_unpaid | default('Mark as unpaid') }}
+                {% else %}
+                  {{ t.mark_paid | default('Mark as paid') }}
+                {% endif %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <p style="margin-bottom:1rem">
     {% if mediation.mediation_type == 'unstructured' %}
       <a href="{{ url_for('mediation.view_mediation', mediation_id=mediation.id) }}" class="btn btn-outline btn-sm">← {{ t.back_to_mediation }}</a>
@@ -59,7 +106,7 @@
   {% else %}
   <div class="card" style="text-align:center;padding:2rem">
     <p class="text-muted">{{ t.mediation_payments_empty | default('No payments recorded for this mediation yet.') }}</p>
-    <p class="text-sm text-muted" style="margin-top:0.5rem">{{ t.mediation_payments_empty_hint | default('Payments are created when parties complete the payment step in pre-mediation (or when you record them).') }}</p>
+    <p class="text-sm text-muted" style="margin-top:0.5rem">{{ t.mediation_payments_empty_hint | default('Use the participant list above to record which parties have paid you; detailed payment records will appear here when created (for example by card payments).') }}</p>
   </div>
   {% endif %}
 </div>

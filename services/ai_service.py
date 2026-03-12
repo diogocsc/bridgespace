@@ -105,18 +105,20 @@ def reformulate_nvc(text: str, context: str = "") -> str:
 # Phase 2 – Agenda extraction
 # ---------------------------------------------------------------------------
 
-def extract_agenda_points(perspective_texts: list) -> list:
+def extract_agenda_points(perspective_texts: list, lang: str = "en") -> list:
     """
     Given a list of perspective texts, return a list of agenda point dicts:
       [{"title": "...", "description": "..."}, ...]
     """
     combined = "\n\n---\n\n".join(perspective_texts)
+    lang_name = _lang_name(lang)
 
     prompt = f"""You are an experienced facilitative mediator.
 Read the following perspectives from conflicting parties and identify
 the key agenda points that need to be addressed in negotiation.
 Return ONLY a JSON array. Each item must have "title" (short label)
 and "description" (one sentence explanation).
+Write both title and description in {lang_name}.
 No markdown, no extra text — only the raw JSON array.
 
 Perspectives:
@@ -140,7 +142,7 @@ JSON agenda points:"""
 # Phase 4 – Agreement drafting
 # ---------------------------------------------------------------------------
 
-def draft_agreement(mediation_title: str, accepted_proposals: list) -> str:
+def draft_agreement(mediation_title: str, accepted_proposals: list, lang: str = "en") -> str:
     """
     Draft a formal agreement text from accepted proposals.
 
@@ -156,12 +158,14 @@ def draft_agreement(mediation_title: str, accepted_proposals: list) -> str:
         for prop in item["proposals"]:
             context_lines.append(f"  - {prop}")
     context = "\n".join(context_lines)
+    lang_name = _lang_name(lang)
 
     prompt = f"""You are a professional mediator drafting a formal agreement.
 Use neutral, clear, and constructive language.
 Structure the agreement with: an introduction, numbered clauses for each
 agreed point, and a closing statement.
 Do NOT add signatures — those will be added separately.
+Write the agreement in {lang_name}.
 
 Mediation title: {mediation_title}
 

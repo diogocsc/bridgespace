@@ -119,7 +119,14 @@
       {% for p in mediation.perspectives %}
       <div class="card" style="margin-bottom:1rem;border-left:3px solid {% if p.author_id == current_user.id %}var(--sage-dark){% else %}var(--accent){% endif %}">
         <div class="flex justify-between items-center" style="margin-bottom:0.5rem;flex-wrap:wrap;gap:0.35rem">
-          <strong style="font-size:0.9rem">{{ p.author.display_name or p.author.username }}</strong>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <strong style="font-size:0.9rem">{{ p.author.display_name or p.author.username }}</strong>
+            {% if p.author and p.author.is_mediator %}
+            <span class="badge" style="font-size:0.7rem;background:#E8F0EE;color:var(--sage-dark);">
+              {{ t.role_mediator }}
+            </span>
+            {% endif %}
+          </div>
           <div style="display:flex;align-items:center;gap:0.5rem">
             {% if p.used_ai_reformulation %}
             <span class="post-version-badge" style="font-size:0.7rem;padding:0.1rem 0.4rem;background:#F0F7F4;color:var(--sage-dark)" title="{{ t.ai_reformulation_badge_tooltip | default('This perspective was reformulated by AI before sharing') }}">✦ {{ t.ai_reformulation_badge | default('AI reformulation') }}</span>

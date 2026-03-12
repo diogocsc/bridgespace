@@ -10,7 +10,7 @@
   </div>
 {% else %}
   {% for ap in mediation.agenda_points %}
-  <div class="card" style="margin-bottom:1.5rem">
+      <div class="card" style="margin-bottom:1.5rem">
     <div class="flex justify-between items-center" style="margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
       <h3 style="font-size:1rem;font-weight:600">{{ loop.index }}. {{ ap.title }}</h3>
       <span class="text-sm text-muted">{{ ap.proposals|length }} proposal(s)</span>
@@ -25,16 +25,26 @@
       {% else %}var(--border){% endif %};
       background:{% if prop.status == 'accepted' %}#E8F5EE{% elif prop.status == 'rejected' %}#FDE8E8{% else %}transparent{% endif %}">
       <div class="flex justify-between items-center" style="margin-bottom:0.4rem;flex-wrap:wrap;gap:0.35rem">
-        <strong class="text-sm">{{ prop.author.display_name or prop.author.username }}</strong>
+        <div style="display:flex;align-items:center;gap:0.4rem;">
+          <strong class="text-sm">{{ prop.author.display_name or prop.author.username }}</strong>
+          {% if prop.author and prop.author.is_mediator %}
+          <span class="badge" style="font-size:0.7rem;background:#E8F0EE;color:var(--sage-dark);">
+            {{ t.role_mediator }}
+          </span>
+          {% endif %}
+        </div>
         <div style="display:flex;align-items:center;gap:0.75rem">
           {% if prop.reformulated %}
           <span class="badge" style="font-size:0.7rem;padding:0.1rem 0.4rem;background:#F0F7F4;color:var(--sage-dark)" title="{{ t.ai_reformulation_badge_tooltip | default('This proposal has an AI NVC reformulation') }}">✦ {{ t.ai_reformulation_badge | default('AI reformulation') }}</span>
           {% endif %}
+          {% set status_key = 'proposal_status_' ~ prop.status %}
           <span class="badge
             {% if prop.status == 'accepted' %}badge-active
             {% elif prop.status == 'rejected' %}badge-live
             {% elif prop.status == 'modified' %}badge-async
-            {% else %}badge-pending{% endif %}">{{ prop.status }}</span>
+            {% else %}badge-pending{% endif %}">
+            {{ t.get(status_key, prop.status) }}
+          </span>
           <span class="text-sm text-muted">{{ prop.created_at.strftime('%d %b, %H:%M') }}</span>
         </div>
       </div>
@@ -53,7 +63,10 @@
         <input type="hidden" name="proposal_id" value="{{ prop.id }}">
         <select name="status" onchange="this.form.submit()" style="width:auto;padding:0.3rem 0.6rem;font-size:0.82rem">
           {% for s in ['pending','accepted','rejected','modified'] %}
-          <option value="{{ s }}" {% if prop.status == s %}selected{% endif %}>{{ s }}</option>
+          {% set opt_key = 'proposal_status_' ~ s %}
+          <option value="{{ s }}" {% if prop.status == s %}selected{% endif %}>
+            {{ t.get(opt_key, s) }}
+          </option>
           {% endfor %}
         </select>
       </form>
@@ -66,9 +79,9 @@
     <form method="POST" style="display:flex;gap:0.75rem;margin-top:0.5rem">
       <input type="hidden" name="action" value="add_proposal">
       <input type="hidden" name="agenda_point_id" value="{{ ap.id }}">
-      <textarea name="content" placeholder="Your proposal for this point…" required
+      <textarea name="content" placeholder="{{ t.proposal_placeholder }}" required
                 style="flex:1;min-height:70px;resize:vertical"></textarea>
-      <button type="submit" class="btn btn-outline" style="align-self:flex-end">Submit</button>
+      <button type="submit" class="btn btn-outline" style="align-self:flex-end">{{ t.submit_proposal }}</button>
     </form>
     {% endif %}
   </div>

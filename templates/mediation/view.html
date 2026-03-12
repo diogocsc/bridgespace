@@ -72,6 +72,11 @@
       <span class="badge badge-{{ mediation.status }}">{{ mediation.status|capitalize }}</span>
       <span class="text-sm text-muted">Started {{ mediation.created_at.strftime('%b %d, %Y') }}</span>
     </div>
+    {% if (mediation.pricing_type or 'fixed') == 'donation' %}
+    <p class="text-sm text-muted" style="margin-top:0.35rem;">
+      {{ t.pricing_type_donation }}{% if mediation.price_per_party_cents > 0 %} — {{ t.suggested_minimum }}: {{ '%.2f' % (mediation.price_per_party_cents / 100.0) }} {{ mediation.currency }} {{ t.per_party }}{% endif %}
+    </p>
+    {% endif %}
     {% if mediation.description %}
       <p style="margin-top:0.7rem; color:var(--muted); max-width:600px;">{{ mediation.description }}</p>
     {% endif %}
@@ -122,7 +127,14 @@
   {% set is_agreement = (is_unstructured and mediation.agreement_post_id == post.id) %}
   <div class="post-card {{ 'own-post' if is_own else 'other-post' }}{% if is_agreement %} agreement-post{% endif %}" id="post-{{ post.id }}" {% if is_agreement %} style="border-left:3px solid var(--success);background:#E8F5EE" {% endif %}>
     <div class="post-meta">
-      <span class="post-author">{{ post.author.display_name }}</span>
+      <span class="post-author">
+        {{ post.author.display_name }}
+        {% if post.author and post.author.is_mediator %}
+        <span class="badge" style="font-size:0.7rem;margin-left:0.35rem;background:#E8F0EE;color:var(--sage-dark);">
+          {{ t.role_mediator }}
+        </span>
+        {% endif %}
+      </span>
       <span class="post-time">{{ post.created_at.strftime('%b %d · %H:%M') }}</span>
       {% if is_agreement %}
         <span class="post-version-badge" style="background:var(--success);color:#fff">{{ t.marked_as_agreement | default('Agreement') }}</span>
