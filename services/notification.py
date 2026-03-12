@@ -619,6 +619,71 @@ def send_mediator_unconfirmed_alert_to_admins(mediation):
     return success
 
 
+def send_no_mediators_quota_alert_to_admins(requested_title: str, requester_display_name: str, no_mediators_at_all: bool = False):
+    """
+    Notify all admins and superadmins that a user tried to request a mediation but no mediators
+    had available quota (or no mediators are registered if no_mediators_at_all=True).
+    """
+    from models import User
+    admins = User.query.filter(User.role.in_(("admin", "superadmin"))).all()
+    if not admins:
+        return True
+    url = _external_url("admin.mediations")
+    lang = _email_lang_default()
+    if no_mediators_at_all:
+        if lang == "pt":
+            c = (
+                "<p>Um utilizador tentou pedir uma mediação mas <strong>não há mediadores registados</strong> na plataforma.</p>"
+                f"<p><strong>Pedido:</strong> \"{requested_title}\"</p>"
+                f"<p><strong>Requerente:</strong> {requester_display_name or '—'}</p>"
+                "<p>Os administradores da plataforma foram alertados. Por favor, registe mediadores ou informe os utilizadores.</p>"
+                f"<a href='{url}' class='btn'>Abrir backoffice</a><hr>"
+                f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
+            )
+            subject = "Aviso: não há mediadores registados"
+            title = "Não há mediadores registados"
+        else:
+            c = (
+                "<p>A user tried to request a mediation but <strong>no mediators are registered</strong> on the platform.</p>"
+                f"<p><strong>Requested title:</strong> \"{requested_title}\"</p>"
+                f"<p><strong>Requester:</strong> {requester_display_name or '—'}</p>"
+                "<p>Platform administrators have been notified. Please register mediators or inform users.</p>"
+                f"<a href='{url}' class='btn'>Open backoffice</a><hr>"
+                f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
+            )
+            subject = "Alert: no mediators registered"
+            title = "No mediators registered"
+    else:
+        if lang == "pt":
+            c = (
+                "<p>Um utilizador tentou pedir uma mediação mas <strong>não há mediadores com quota disponível</strong> no momento.</p>"
+                f"<p><strong>Pedido:</strong> \"{requested_title}\"</p>"
+                f"<p><strong>Requerente:</strong> {requester_display_name or '—'}</p>"
+                "<p>Os administradores da plataforma foram alertados. Por favor, verifique as quotas dos mediadores ou adicione mais capacidade.</p>"
+                f"<a href='{url}' class='btn'>Abrir mediações no backoffice</a><hr>"
+                f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
+            )
+            subject = "Aviso: sem mediadores com quota disponível"
+            title = "Sem mediadores com quota disponível"
+        else:
+            c = (
+                "<p>A user tried to request a mediation but <strong>no mediators have available quota</strong> at the moment.</p>"
+                f"<p><strong>Requested title:</strong> \"{requested_title}\"</p>"
+                f"<p><strong>Requester:</strong> {requester_display_name or '—'}</p>"
+                "<p>Platform administrators have been notified. Please review mediator quotas or add capacity.</p>"
+                f"<a href='{url}' class='btn'>Open mediations in backoffice</a><hr>"
+                f"<p style='word-break:break-all;font-size:.82rem;color:#7A7A7A;'>{url}</p>"
+            )
+            subject = "Alert: no mediators with available quota"
+            title = "No mediators with available quota"
+    html = _wrap(title, c, lang)
+    success = True
+    for u in admins:
+        if not dispatch_to_user_channels(u, subject, html, link_url=url):
+            success = False
+    return success
+
+
 def send_payment_config_changed_notification():
     """
     Notify all admins and superadmins that Stripe (payment) configuration was changed.

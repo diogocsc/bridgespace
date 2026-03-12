@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ t.mediation_payments_title | default('Payments') }} — {{ mediation.title }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;">
+  <h1 style="font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:0.25rem">
+    {{ t.mediation_payments_title | default('Payments for this mediation') }}
+  </h1>
+  <p class="text-muted text-sm" style="margin-bottom:1rem">
+    {{ t.mediation_payments_intro | default('Mark payments as received when parties have paid you. This does not affect platform billing; it is for your own tracking and allows closing the mediation when required.') }}
+  </p>
+
+  <p style="margin-bottom:1rem">
+    {% if mediation.mediation_type == 'unstructured' %}
+      <a href="{{ url_for('mediation.view_mediation', mediation_id=mediation.id) }}" class="btn btn-outline btn-sm">← {{ t.back_to_mediation }}</a>
+    {% else %}
+      <a href="{{ url_for('mediation.session', mediation_id=mediation.id) }}" class="btn btn-outline btn-sm">← {{ t.back_to_mediation }}</a>
+    {% endif %}
+  </p>
+
+  {% if payments %}
+  <div class="card" style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);text-align:left">
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_date | default('Date') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.participants | default('Participant') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_kind | default('Kind') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_amount | default('Amount') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_status | default('Status') }}</th>
+          <th style="padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--muted)">{{ t.payout_table_done | default('Received') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in payments %}
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ tx.created_at.strftime('%d %b %Y %H:%M') if tx.created_at else '—' }}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ tx.participant.display_name if tx.participant else '—' }}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{% if tx.kind == 'standard' %}{{ t.payment_kind_standard | default('Fixed price') }}{% elif tx.kind == 'donation' %}{{ t.payment_kind_donation | default('Donation') }}{% elif tx.kind == 'probono' %}{{ t.payment_kind_probono | default('Pro bono') }}{% else %}{{ tx.kind }}{% endif %}</td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">{{ "%.2f"|format(tx.amount_cents / 100) }} {{ tx.currency }}</td>
+          <td style="padding:0.5rem 0.75rem"><span class="badge badge-{{ 'closed' if tx.status == 'paid' else 'pending' }}">{% if tx.status == 'paid' %}{{ t.status_paid | default('Paid') }}{% else %}{{ t.pending | default('Pending') }}{% endif %}</span></td>
+          <td style="padding:0.5rem 0.75rem;font-size:0.9rem">
+            {% if tx.mediator_received_at %}
+              <span style="color:var(--success)">✓ {{ t.payout_marked_done | default('Yes') }}</span>
+            {% elif tx.status == 'paid' %}
+              <form method="post" action="{{ url_for('mediation.mark_payment_received', payment_id=tx.id) }}" style="display:inline">
+                <input type="hidden" name="next" value="{{ url_for('mediation.mediation_payments', mediation_id=mediation.id) }}">
+                <button type="submit" class="btn btn-outline btn-sm">{{ t.payout_mark_done | default('Mark as received') }}</button>
+              </form>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:2rem">
+    <p class="text-muted">{{ t.mediation_payments_empty | default('No payments recorded for this mediation yet.') }}</p>
+    <p class="text-sm text-muted" style="margin-top:0.5rem">{{ t.mediation_payments_empty_hint | default('Payments are created when parties complete the payment step in pre-mediation (or when you record them).') }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }} – {{ t.landing_page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-wide" style="padding-top:2.5rem;padding-bottom:3rem;">
+  <section style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:2.5rem;align-items:center;">
+    <div>
+      <p class="text-sm text-muted" style="letter-spacing:.12em;text-transform:uppercase;margin-bottom:.6rem;">
+        {{ app_name }}
+      </p>
+      <h1 style="font-family:'Playfair Display',serif;font-size:2.3rem;line-height:1.2;margin-bottom:1rem;">
+        {{ t.landing_tagline }}
+      </h1>
+      <p class="text-muted" style="font-size:0.98rem;max-width:520px;margin-bottom:1.5rem;">
+        {{ t.landing_intro_prefix }}{{ app_name }}{{ t.landing_intro_suffix }}
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+          {{ t.landing_cta_register | default(t.create_account) }}
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline">
+          {{ t.log_in }}
+        </a>
+      </div>
+      <ul class="text-sm text-muted" style="list-style:none;padding-left:0;line-height:1.8;">
+        <li>✓ {{ t.landing_bullet1 }}</li>
+        <li>✓ {{ t.landing_bullet2 }}</li>
+        <li>✓ {{ t.landing_bullet3 }}</li>
+      </ul>
+    </div>
+    <aside>
+      <div class="card" style="background:var(--warm-white);">
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:0.75rem;">{{ t.landing_how_title }}</h2>
+        <ol class="text-sm text-muted" style="padding-left:1.25rem;line-height:1.8;margin-bottom:1rem;">
+          <li>{{ t.landing_how_step1 }}</li>
+          <li>{{ t.landing_how_step2 }}</li>
+          <li>{{ t.landing_how_step3 }}</li>
+        </ol>
+        <p class="text-sm text-muted" style="margin-bottom:0.4rem;">
+          {{ t.landing_how_async }}
+        </p>
+        <p class="text-sm text-muted">
+          {{ t.landing_how_payments }}
+        </p>
+      </div>
+    </aside>
+  </section>
+
+  <section style="margin-top:3rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;">
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.4rem;">{{ t.landing_for_people_title }}</h3>
+      <p class="text-sm text-muted">
+        {{ t.landing_for_people_desc }}
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.4rem;">{{ t.landing_for_mediators_title }}</h3>
+      <p class="text-sm text-muted">
+        {{ t.landing_for_mediators_desc }}
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.4rem;">{{ t.landing_for_orgs_title }}</h3>
+      <p class="text-sm text-muted">
+        {{ t.landing_for_orgs_desc }}
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}
+

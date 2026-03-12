@@ -38,6 +38,7 @@ def create_mediation_with_participant(app, mediator_id, creator_id, mediation_ty
             creator_id=creator_id,
             status="open",
             phase="pre_mediation",
+            payment_required=False,
         )
         db.session.add(m)
         db.session.flush()

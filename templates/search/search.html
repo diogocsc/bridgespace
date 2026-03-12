@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Search Similar Cases – BridgeSpace{% endblock %}
+{% block title %}{{ t.search_similar_cases | default('Search Similar Cases') }} – {{ app_name }}{% endblock %}
 
 {% block head %}
 <style>

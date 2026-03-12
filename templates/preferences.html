@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Preferences – BridgeSpace{% endblock %}
+{% block title %}{{ t.preferences }} – {{ app_name }}{% endblock %}
 
 {% block head %}
 <style>
@@ -75,10 +75,17 @@
     <div class="card" style="margin-bottom:1.5rem;">
       <div class="section-title">{{ t.profile_section }}</div>
 
+      {% set _name = (user.display_name or user.username or user.email or '') %}
       <div class="avatar-row">
-        <div class="avatar-circle">{{ user.display_name[0].upper() }}</div>
+        <div class="avatar-circle">
+          {% if _name %}
+            {{ _name[:1].upper() }}
+          {% else %}
+            ?
+          {% endif %}
+        </div>
         <div>
-          <p style="font-weight:600;font-size:1rem;margin:0;">{{ user.display_name }}</p>
+          <p style="font-weight:600;font-size:1rem;margin:0;">{{ user.display_name or user.username }}</p>
           <p style="font-size:.85rem;color:var(--muted);margin:0;">
             @{{ user.username }} &middot; {{ user.email }}
           </p>
@@ -231,10 +238,12 @@
     <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">
       {{ t.delete_account_intro }}
     </p>
-    <button type="button" class="btn btn-danger btn-sm"
-            onclick="confirmDelete({{ t.delete_account_confirm | tojson }})">
-      {{ t.delete_account_btn }}
-    </button>
+    <form method="POST" action="{{ url_for('auth.delete_account') }}"
+          onsubmit="return confirm({{ t.delete_account_confirm | tojson }})">
+      <button type="submit" class="btn btn-danger btn-sm">
+        {{ t.delete_account_btn }}
+      </button>
+    </form>
   </div>
 </div>
 {% endblock %}
@@ -244,16 +253,6 @@
 function selectLang(code) {
   document.querySelectorAll('.lang-card').forEach(el => el.classList.remove('selected'));
   document.getElementById('lang-label-' + code).classList.add('selected');
-}
-
-function confirmDelete(msg) {
-  if (confirm(msg)) {
-    fetch('{{ url_for("auth.delete_account") }}', { method: 'POST' })
-      .then(r => {
-        if (r.ok) window.location.href = '{{ url_for("auth.login") }}';
-        else alert('{{ t.error_try_again | default("Error. Please try again.") }}');
-      });
-  }
 }
 </script>
 {% endblock %}

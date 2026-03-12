@@ -10,6 +10,9 @@
     <div style="display:flex;gap:0.5rem;align-items:center">
       <a href="{{ url_for('mediation.invite_page', mediation_id=mediation.id) }}"
          class="btn btn-outline btn-sm">{{ t.invite_parties_btn | default('+ Invite parties') }}</a>
+      {% if current_user.id == mediation.mediator_id %}
+      <a href="{{ url_for('mediation.mediation_payments', mediation_id=mediation.id) }}" class="btn btn-outline btn-sm">{{ t.mediation_payments_link | default('Payments') }}</a>
+      {% endif %}
       {% if current_user.id == mediation.mediator_id and mediation.phase != 'agreement' %}
       <form method="POST" action="{{ url_for('mediation.advance_phase', mediation_id=mediation.id) }}"
             onsubmit="return confirm(this.getAttribute('data-confirm') || 'Advance to the next phase? This cannot be undone.');"
@@ -36,6 +39,9 @@
     {% set phases = ['pre_mediation','perspectives','agenda','proposals','agreement'] %}
     {% set cur_idx = phases.index(mediation.phase) if mediation.phase in phases else 0 %}
   {% endif %}
+  <p class="text-sm text-muted" style="margin-bottom:0.5rem" aria-live="polite">
+    {{ t.phase_current_step | default('Current step') }}: <strong>{{ phase_labels[cur_idx][1] }}</strong>
+  </p>
   <div style="display:flex;border-bottom:2px solid var(--border)">
     {% for ph, label in phase_labels %}
       {% set idx = loop.index0 %}
@@ -49,7 +55,8 @@
                   color:{% if idx < cur_idx %}var(--success){% elif idx == cur_idx %}var(--sage-dark){% else %}var(--muted){% endif %};
                   border-bottom:2px solid {% if idx < cur_idx %}var(--success){% elif idx == cur_idx %}var(--sage-dark){% else %}transparent{% endif %};
                   margin-bottom:-2px;pointer-events:{% if idx > cur_idx %}none{% else %}auto{% endif %};
-                  text-decoration:none">
+                  text-decoration:none"
+           {% if idx == cur_idx %}aria-current="step"{% endif %}>
           {{ label }}
         </a>
       {% endif %}

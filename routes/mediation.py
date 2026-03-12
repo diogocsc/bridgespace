@@ -145,6 +145,19 @@ def _pick_first_mediator(mediators):
     return random.choice(candidates)
 
 
+def _mediators_with_available_quota(mediators):
+    """Return list of mediators who have at least one available mediation slot (for request flow)."""
+    result = []
+    for m in mediators:
+        if not getattr(m, "is_mediator", True):
+            continue
+        profile = ensure_mediator_profile(m.id)
+        avail = available_mediations(profile)
+        if avail == float("inf") or (isinstance(avail, (int, float)) and avail >= 1):
+            result.append(m)
+    return result
+
+
 def _pick_next_mediator_by_ranking(mediators, exclude_user_id):
     """
     Second tentative: choose by highest ranking, excluding exclude_user_id.
@@ -297,7 +310,30 @@ def mark_payment_received(payment_id):
         abort(404)
     payment.mediator_received_at = datetime.utcnow()
     db.session.commit()
+    next_url = request.form.get('next') or request.args.get('next')
+    if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+        return redirect(next_url)
     return redirect(url_for('mediation.payout_settings'))
+
+
+@mediation_bp.route('/mediation/<int:mediation_id>/payments')
+@login_required
+def mediation_payments(mediation_id):
+    """Per-mediation payments list for the mediator to mark payments as received (any phase, structured or unstructured)."""
+    med = _get_med(mediation_id)
+    if med.mediator_id != current_user.id:
+        abort(403)
+    payments = (
+        MediationPayment.query
+        .filter_by(mediation_id=mediation_id)
+        .order_by(MediationPayment.created_at.desc())
+        .all()
+    )
+    return render_template(
+        'mediation/mediation_payments.html',
+        mediation=med,
+        payments=payments,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -314,9 +350,8 @@ def request_mediation():
         title        = request.form.get('title', '').strip()
         description  = request.form.get('description', '').strip()
         mode         = request.form.get('mode', 'async')
-        mediation_type = request.form.get('mediation_type', 'structured')
-        if mediation_type not in ('structured', 'unstructured'):
-            mediation_type = 'structured'
+        # Mediation type (structured vs unstructured) is set by the mediator in pre-mediation
+        mediation_type = 'structured'
         start_str    = request.form.get('start_date', '')
         invitees_raw = request.form.get('invitees', '')
         personal_msg = request.form.get('personal_message', '').strip()
@@ -335,7 +370,8 @@ def request_mediation():
 
         mediator_user = None
         if mediator_choice == 'auto':
-            mediator_user = _pick_first_mediator(mediators)
+            mediators_with_quota = _mediators_with_available_quota(mediators)
+            mediator_user = _pick_first_mediator(mediators_with_quota) if mediators_with_quota else None
         else:
             try:
                 mediator_id = int(mediator_choice)
@@ -344,8 +380,37 @@ def request_mediation():
                 pass
 
         if not mediator_user:
-            flash('No mediator is available yet. Please contact support or try again later.', 'danger')
+            from services.translations import translate
+            lang = getattr(current_user, 'preferred_language', 'en')
+            try:
+                from services.notification import send_no_mediators_quota_alert_to_admins
+                send_no_mediators_quota_alert_to_admins(
+                    title or request.form.get('title', '')[:200],
+                    current_user.display_name or current_user.username,
+                    no_mediators_at_all=len(mediators) == 0,
+                )
+            except Exception:
+                pass
+            flash(translate('no_mediators_available_try_later', lang), 'warning')
             return render_template('mediation/request.html', mediators=mediators)
+
+        # When manual choice, ensure the chosen mediator has available quota
+        if mediator_choice != 'auto' and mediator_user.is_mediator:
+            mediators_with_quota = _mediators_with_available_quota(mediators)
+            if not any(m.id == mediator_user.id for m in mediators_with_quota):
+                from services.translations import translate
+                lang = getattr(current_user, 'preferred_language', 'en')
+                try:
+                    from services.notification import send_no_mediators_quota_alert_to_admins
+                    send_no_mediators_quota_alert_to_admins(
+                        title or request.form.get('title', '')[:200],
+                        current_user.display_name or current_user.username,
+                        no_mediators_at_all=False,
+                    )
+                except Exception:
+                    pass
+                flash(translate('no_mediators_available_try_later', lang), 'warning')
+                return render_template('mediation/request.html', mediators=mediators)
 
         # Enforce mediator quota before creating mediation
         if mediator_user.is_mediator:
@@ -434,9 +499,8 @@ def create_mediation():
         title        = request.form.get('title', '').strip()
         description  = request.form.get('description', '').strip()
         mode         = request.form.get('mode', 'async')
-        mediation_type = request.form.get('mediation_type', 'structured')
-        if mediation_type not in ('structured', 'unstructured'):
-            mediation_type = 'structured'
+        # Mediation type (structured vs unstructured) is set by the mediator in pre-mediation
+        mediation_type = 'structured'
         start_str    = request.form.get('start_date', '')
         invitees_raw = request.form.get('invitees', '')
         personal_msg = request.form.get('personal_message', '').strip()
@@ -600,8 +664,22 @@ def _do_join(med, inv=None):
     if not current_user.is_authenticated:
         next_url = url_for('mediation.join_via_invite',
                            token=inv.token if inv else med.invite_token)
-        flash('Please log in or register to accept your invitation.', 'info')
-        return redirect(url_for('auth.login', next=next_url))
+        # If this invite was sent to an email that already belongs to a user, ask to log in.
+        # Otherwise, redirect to registration so a new user can sign up and then join.
+        target_endpoint = 'auth.login'
+        try:
+            from models import User
+            if inv and '@' in (inv.contact or ''):
+                existing = User.query.filter_by(email=inv.contact.lower()).first()
+                if not existing:
+                    target_endpoint = 'auth.register'
+        except Exception:
+            target_endpoint = 'auth.login'
+        if target_endpoint == 'auth.login':
+            flash('Please log in to accept your invitation.', 'info')
+        else:
+            flash('Please register to accept your invitation.', 'info')
+        return redirect(url_for(target_endpoint, next=next_url))
 
     if med.get_participant(current_user):
         flash('You are already a participant in this mediation.', 'info')
@@ -811,6 +889,18 @@ def pre_mediation(mediation_id):
                     pass
             flash('Price and payment type updated.', 'success')
 
+        elif current_user.id == med.mediator_id and action == 'set_mediation_type':
+            new_type = (request.form.get('mediation_type') or 'structured').strip().lower()
+            if new_type in ('structured', 'unstructured'):
+                med.mediation_type = new_type
+                db.session.commit()
+                from services.translations import translate
+                lang = getattr(current_user, 'preferred_language', 'en')
+                flash(translate('mediation_type_updated', lang) or 'Mediation type updated.', 'success')
+            else:
+                flash('Invalid mediation type.', 'danger')
+            return redirect(url_for('mediation.pre_mediation', mediation_id=med.id))
+
         # Parties acknowledge that they read the process (only when mediator has added explanation)
         elif action == 'ack' and participant:
             if not (med.pre_mediation_text and med.pre_mediation_text.strip()):
@@ -915,6 +1005,18 @@ def pre_mediation(mediation_id):
             "pre_mediation_acknowledged": ack,
         })
 
+    # Pending invitations (contacts who have not yet accepted or declined)
+    pending_invitations = [
+        {
+            "contact": inv.contact,
+            "contact_type": getattr(inv, "contact_type", "email"),
+            "is_required": getattr(inv, "is_required", True),
+            "status": getattr(inv, "status", "pending"),
+        }
+        for inv in getattr(med, "invitations", []) or []
+        if getattr(inv, "status", "pending") == "pending"
+    ]
+
     # Number of parties obliged to pay (required only); commission/total are based on this
     required_user_ids = {
         p.user_id for p in med.participants
@@ -941,6 +1043,7 @@ def pre_mediation(mediation_id):
         mediation=med,
         participant=participant,
         participants_display=participants_display,
+        pending_invitations=pending_invitations,
         n_required_parties=n_required_parties,
         participant_is_required=participant_is_required,
         payments_enabled=payments_enabled_for_mediation(med),

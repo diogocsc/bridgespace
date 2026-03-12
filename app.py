@@ -26,7 +26,7 @@ if _env_path.exists():
         if _kc and _vc and not _kc.startswith("#"):
             os.environ[_kc] = _vc
 
-from flask import Flask, redirect, url_for, request, jsonify
+from flask import Flask, redirect, url_for, request, jsonify, render_template
 from flask_login import current_user
 from extensions import db, login_manager, bcrypt, socketio, mail
 
@@ -129,22 +129,27 @@ def create_app(test_config=None):
         lang = getattr(current_user, "preferred_language", None) if current_user.is_authenticated else DEFAULT_LANGUAGE
         if not lang or lang not in LOCALES:
             lang = DEFAULT_LANGUAGE if DEFAULT_LANGUAGE in LOCALES else "en"
+        t = get_translations(lang)
+        # App name: from APP_NAME in production/.env; fallback to locale default (e.g. BridgeSpace)
+        app_name = (app.config.get("APP_NAME") or "").strip() or t.get("site_name", "BridgeSpace")
         recaptcha_site_key = app.config.get("RECAPTCHA_SITE_KEY", "")
         return {
-            "t": get_translations(lang),
+            "t": t,
             "current_lang": lang,
+            "app_name": app_name,
+            "config": app.config,
             "recaptcha_site_key": recaptcha_site_key,
             "company_contact_email": company_contact_email(),
             "company_address": company_address(),
             "company_contact_phone": company_contact_phone(),
         }
 
-    # root route
+    # root route (public landing for non-authenticated users)
     @app.route('/')
     def index():
         if current_user.is_authenticated:
             return redirect(url_for('mediation.dashboard'))
-        return redirect(url_for('auth.login'))
+        return render_template('landing.html')
 
     # create tables
     with app.app_context():

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}{{ config.APP_NAME if config and config.APP_NAME else 'BridgeSpace' }}{% endblock %}</title>
+<title>{% block title %}{{ app_name }}{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
@@ -183,10 +183,10 @@
 </head>
 <body>
 <nav class="main-nav">
-  {# Brand link: dashboard if logged in, login page otherwise — avoids login_required redirect loop #}
-  <a href="{{ url_for('mediation.dashboard') if current_user.is_authenticated else url_for('auth.login') }}"
+  {# Brand link: dashboard if logged in, landing page otherwise #}
+  <a href="{{ url_for('mediation.dashboard') if current_user.is_authenticated else url_for('index') }}"
      class="nav-brand">
-    {{ config.APP_NAME if config and config.APP_NAME else 'BridgeSpace' }}
+    {{ app_name }}
   </a>
   <div class="nav-links">
     {% if current_user.is_authenticated %}

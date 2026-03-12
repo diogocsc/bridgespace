@@ -1,12 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Request a Mediation — BridgeSpace{% endblock %}
+{% block title %}{{ t.request_mediation_title }} — {{ app_name }}{% endblock %}
 
 {% block content %}
 <div style="max-width:620px;margin:0 auto">
   <h1 style="font-family:'Playfair Display',serif;font-size:1.9rem;margin-bottom:0.25rem">{{ t.request_mediation_title }}</h1>
-  <p class="text-muted text-sm" style="margin-bottom:2rem">
+  <p class="text-muted text-sm" style="margin-bottom:1.25rem">
     {{ t.request_mediation_intro }}
   </p>
+
+  <div class="card ux-what-next" style="margin-bottom:1.5rem;padding:1rem 1.25rem;background:#F0F7F4;border-left:3px solid var(--sage);box-shadow:none">
+    <strong style="font-size:0.9rem;color:var(--sage-dark)">{{ t.what_happens_after_submit_title | default('What happens after I submit?') }}</strong>
+    <p class="text-sm text-muted" style="margin:0.35rem 0 0;line-height:1.5">{{ t.what_happens_after_submit | default('A mediator will be assigned and has 48 hours to confirm. You and the other parties will then receive a link to join. You can reply in your own time (asynchronous) or in a live session, depending on the mode you choose below.') }}</p>
+  </div>
 
   <div class="card">
     <form method="POST">
@@ -22,20 +27,12 @@
       </div>
 
       <div class="form-group">
-        <label>{{ t.mediation_type_label | default('Mediation type') }}</label>
-        <select name="mediation_type">
-          <option value="structured">{{ t.mediation_type_structured | default('Structured (phased process)') }}</option>
-          <option value="unstructured">{{ t.mediation_type_unstructured | default('Unstructured (free-flow posts)') }}</option>
-        </select>
-        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.mediation_type_hint | default('Structured follows pre-mediation → perspectives → agenda → proposals → agreement. Unstructured uses a single conversation where the mediator can mark the agreement and close with an outcome.') }}</p>
-      </div>
-
-      <div class="form-group">
         <label>{{ t.mediation_mode }}</label>
         <select name="mode">
           <option value="async">{{ t.mode_async }}</option>
           <option value="live">{{ t.mode_live }}</option>
         </select>
+        <p class="text-sm text-muted" style="margin-top:0.35rem">{{ t.mode_hint_plain | default('Asynchronous: everyone replies when they can — no need to be online at the same time. Live: for real-time meetings when everyone is available together.') }}</p>
       </div>
 
       <div class="form-group">

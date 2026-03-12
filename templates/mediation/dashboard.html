@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — BridgeSpace{% endblock %}
+{% block title %}{{ t.dashboard }} — {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="flex justify-between items-center" style="margin-bottom:2rem;flex-wrap:wrap;gap:0.75rem">
@@ -8,8 +8,10 @@
     {% if current_user.is_mediator %}
     <a href="{{ url_for('mediation.mediator_metrics') }}" class="btn btn-outline btn-sm">{{ t.my_metrics | default('My metrics') }}</a>
     <a href="{{ url_for('mediation.payout_settings') }}" class="btn btn-outline btn-sm">{{ t.payout_settings | default('Payout settings') }}</a>
-    {% endif %}
     <a href="{{ url_for('mediation.create_mediation') }}" class="btn btn-primary">{{ t.new_mediation }}</a>
+    {% else %}
+    <a href="{{ url_for('mediation.request_mediation') }}" class="btn btn-primary">{{ t.request_mediation }}</a>
+    {% endif %}
   </div>
 </div>
 
@@ -93,18 +95,26 @@
 {% endmacro %}
 
 {% if as_mediator %}
-  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.75rem">{{ t.sessions_i_mediate }}</h2>
+  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.25rem">{{ t.sessions_i_mediate }}</h2>
+  <p class="text-sm text-muted" style="margin-bottom:0.75rem">{{ t.sessions_i_mediate_desc | default('Cases where you are the mediator.') }}</p>
   {% for med in as_mediator %}{{ session_row(med) }}{% endfor %}
 {% endif %}
 
 {% if as_participant %}
-  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:2rem 0 0.75rem">{{ t.sessions_i_participate }}</h2>
+  <h2 style="font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:2rem 0 0.25rem">{{ t.sessions_i_participate }}</h2>
+  <p class="text-sm text-muted" style="margin-bottom:0.75rem">{{ t.sessions_i_participate_desc | default('Cases where you are a party (not the mediator).') }}</p>
   {% for med in as_participant %}{{ session_row(med) }}{% endfor %}
 {% endif %}
 
 {% if not as_mediator and not as_participant %}
-  <div class="card" style="text-align:center;padding:3rem">
-    <p style="color:var(--muted);margin-bottom:1.5rem">{{ t.no_active_sessions }}</p>
+  <div class="card ux-empty-state" style="text-align:center;padding:3rem;max-width:520px;margin:0 auto">
+    <p style="color:var(--charcoal);margin-bottom:1rem;font-size:1.05rem">{{ t.no_active_sessions }}</p>
+    <p class="text-sm text-muted" style="margin-bottom:1.5rem">{{ t.what_happens_next_intro | default('Here’s what happens when you start:') }}</p>
+    <ol class="text-sm text-muted" style="text-align:left;max-width:320px;margin:0 auto 1.5rem;line-height:1.8;padding-left:1.2rem">
+      <li>{{ t.what_happens_step1 | default('You submit a short description and invite the other party (or parties).') }}</li>
+      <li>{{ t.what_happens_step2 | default('A mediator is assigned and confirms within 48 hours.') }}</li>
+      <li>{{ t.what_happens_step3 | default('You and the others work through the process with the mediator’s guidance.') }}</li>
+    </ol>
     {% if current_user.is_mediator or current_user.is_admin %}
       <a href="{{ url_for('mediation.create_mediation') }}" class="btn btn-primary">{{ t.start_first_mediation }}</a>
     {% else %}

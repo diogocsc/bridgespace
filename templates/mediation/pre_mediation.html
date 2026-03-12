@@ -22,6 +22,20 @@
     </p>
 
     {% if current_user.id == mediation.mediator_id and mediation.phase == 'pre_mediation' %}
+      <form method="POST" class="card" style="margin-bottom:1.25rem;padding:1rem;background:var(--cream);box-shadow:none;border:1px solid var(--border)">
+        <input type="hidden" name="action" value="set_mediation_type">
+        <div class="form-group" style="margin-bottom:0.75rem">
+          <label style="font-weight:600">{{ t.mediation_type_label | default('Mediation type') }}</label>
+          <p class="text-sm text-muted" style="margin-bottom:0.5rem">{{ t.mediation_type_set_by_mediator | default('Choose how this mediation will run. You can change this until you advance to the next phase.') }}</p>
+          <select name="mediation_type" style="max-width:320px">
+            <option value="structured" {{ 'selected' if (mediation.mediation_type or 'structured') == 'structured' else '' }}>{{ t.mediation_type_structured | default('Structured (phased process)') }}</option>
+            <option value="unstructured" {{ 'selected' if (mediation.mediation_type or '') == 'unstructured' else '' }}>{{ t.mediation_type_unstructured | default('Unstructured (free-flow conversation)') }}</option>
+          </select>
+          <p class="text-sm text-muted" style="margin-top:0.35rem">{{ t.mediation_type_hint }}</p>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">{{ t.save_mediation_type | default('Save type') }}</button>
+      </form>
+
       <form method="POST" style="margin-bottom:1rem">
         <input type="hidden" name="action" value="save_text">
         <div class="form-group">
@@ -101,16 +115,55 @@
       {% else %}
         <div class="text-muted">{{ t.no_explanation_yet }}</div>
         {% if participant and participant.role != 'mediator' and mediation.phase == 'pre_mediation' %}
-          <form method="POST" style="margin-top:1rem" action="{{ url_for('mediation.ask_mediator_explanation', mediation_id=mediation.id) }}">
-            <button type="submit" class="btn btn-outline">{{ t.ask_mediator_explanation }}</button>
-          </form>
-          <p class="text-sm text-muted" style="margin-top:0.5rem">{{ t.ask_mediator_explanation_hint }}</p>
+          <div class="card ux-ask-mediator" style="margin-top:1.25rem;padding:1rem 1.25rem;background:#FFF8EE;border-left:3px solid var(--accent);box-shadow:none">
+            <p class="text-sm text-muted" style="margin:0 0 0.75rem;line-height:1.5">{{ t.ask_mediator_explanation_hint }}</p>
+            <form method="POST" style="margin:0" action="{{ url_for('mediation.ask_mediator_explanation', mediation_id=mediation.id) }}">
+              <button type="submit" class="btn btn-accent">{{ t.ask_mediator_explanation }}</button>
+            </form>
+          </div>
         {% endif %}
       {% endif %}
     {% endif %}
   </div>
 
   <div>
+    {% if mediation.phase == 'pre_mediation' and pending_invitations %}
+    <div class="card" style="margin-bottom:1rem">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">
+        {{ t.pending_invitations_title or 'Invited participants' }}
+      </h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+        {{ t.pending_invitations_intro or 'These people have been invited but have not yet accepted. Once they join, they will appear in the participant list below.' }}
+      </p>
+      {% for inv in pending_invitations %}
+      <div class="flex justify-between items-center" style="padding:0.4rem 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:500;font-size:0.9rem">{{ inv.contact }}</div>
+          <div class="text-xs text-muted">
+            {{ inv.contact_type }}
+            ·
+            {% if inv.is_required %}
+              {{ t.invitation_required }}
+            {% else %}
+              {{ t.invitation_optional }}
+            {% endif %}
+          </div>
+        </div>
+        <span class="badge badge-pending text-xs">
+          {{ t.pending or 'Pending' }}
+        </span>
+      </div>
+      {% endfor %}
+      {% if current_user.id == mediation.mediator_id %}
+      <p class="text-xs text-muted" style="margin-top:0.75rem">
+        <a href="{{ url_for('mediation.invite_page', mediation_id=mediation.id) }}" style="font-weight:500">
+          {{ t.invite_parties_btn or '+ Invite parties' }}
+        </a>
+      </p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="card" style="margin-bottom:1rem">
       <h3 style="font-size:1rem;font-weight:600;margin-bottom:0.75rem">{{ t.participants }}</h3>
       {% for p in participants_display %}

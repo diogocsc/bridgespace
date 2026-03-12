@@ -1,10 +1,15 @@
 {% extends "base.html" %}
-{% block title %}New Mediation — BridgeSpace{% endblock %}
+{% block title %}{{ t.start_new_mediation }} — {{ app_name }}{% endblock %}
 
 {% block content %}
 <div style="max-width:580px;margin:0 auto">
   <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:0.25rem">{{ t.start_new_mediation }}</h1>
-  <p class="text-muted text-sm" style="margin-bottom:2rem">{{ t.create_mediation_intro or t.you_will_be_mediator_invite }}</p>
+  <p class="text-muted text-sm" style="margin-bottom:1.25rem">{{ t.create_mediation_intro or t.you_will_be_mediator_invite }}</p>
+
+  <div class="card ux-what-next" style="margin-bottom:1.5rem;padding:1rem 1.25rem;background:#F0F7F4;border-left:3px solid var(--sage);box-shadow:none">
+    <strong style="font-size:0.9rem;color:var(--sage-dark)">{{ t.what_happens_after_create_title | default('What happens next?') }}</strong>
+    <p class="text-sm text-muted" style="margin:0.35rem 0 0;line-height:1.5">{{ t.what_happens_after_create | default('Invited parties will receive a link to join. You can add more participants later from the mediation page.') }}</p>
+  </div>
 
   <div class="card">
     <form method="POST">
@@ -20,20 +25,12 @@
       </div>
 
       <div class="form-group">
-        <label>{{ t.mediation_type_label | default('Mediation type') }}</label>
-        <select name="mediation_type">
-          <option value="structured">{{ t.mediation_type_structured | default('Structured (phased process)') }}</option>
-          <option value="unstructured">{{ t.mediation_type_unstructured | default('Unstructured (free-flow posts)') }}</option>
-        </select>
-        <p class="text-sm text-muted" style="margin-top:0.3rem">{{ t.mediation_type_hint | default('Structured: phased process. Unstructured: free-flow conversation; you mark the agreement and close with outcome.') }}</p>
-      </div>
-
-      <div class="form-group">
         <label>{{ t.mode_label }}</label>
         <select name="mode">
           <option value="async">{{ t.mode_async }}</option>
           <option value="live">{{ t.mode_live }}</option>
         </select>
+        <p class="text-sm text-muted" style="margin-top:0.35rem">{{ t.mode_hint_plain | default('Asynchronous: everyone replies when they can. Live: for real-time sessions when everyone is online together.') }}</p>
       </div>
 
       <div class="form-group">

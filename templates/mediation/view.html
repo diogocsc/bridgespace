@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ mediation.title }} – BridgeSpace{% endblock %}
+{% block title %}{{ mediation.title }} – {{ app_name }}{% endblock %}
 
 {% block head %}
 <style>
@@ -87,6 +87,9 @@
      class="btn btn-outline btn-sm">
     {{ t.invite_parties_btn | default('+ Invite parties') }}
   </a>
+  {% endif %}
+  {% if current_user.id == mediation.mediator_id %}
+  <a href="{{ url_for('mediation.mediation_payments', mediation_id=mediation.id) }}" class="btn btn-outline btn-sm">{{ t.mediation_payments_link | default('Payments') }}</a>
   {% endif %}
   <a href="{{ url_for('mediation.dashboard') }}" class="btn btn-outline btn-sm">← Dashboard</a>
   </div>
