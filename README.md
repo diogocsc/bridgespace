@@ -31,7 +31,9 @@ AI-backed conflict mediation platform built with Flask, SQLAlchemy, SocketIO and
 
 4. Configure environment
    cp .env.example .env
-   # Edit .env and add your API keys
+   # Edit .env and add your API keys and settings, e.g.:
+   #   APP_NAME: human-friendly app name (e.g. BridgeSpace / Mediador Online)
+   #   PUBLIC_BASE_URL: public base URL for links in emails/Stripe (e.g. https://mediador.diogocordeiro.pt)
 
 5. Run
    python app.py
@@ -43,7 +45,7 @@ flask process-mediator-timeouts
 ```
 
 ## Tech stack
-- Backend: Flask, Flask-SQLAlchemy, Flask-Login, Flask-SocketIO
+- Backend: Flask, Flask-SQLAlchemy, Flask-Login, Flask-SocketIO, Flask-Mail
 - AI: Ollama Cloud (gpt-oss:120b)
-- Database: SQLite (dev) / PostgreSQL (prod)
+- Database: PostgreSQL (recommended for dev/prod; SQLite supported but legacy)
 - Frontend: Jinja2 templates, vanilla JS, SocketIO

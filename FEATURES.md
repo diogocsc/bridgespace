@@ -107,12 +107,15 @@ When requesting or creating a mediation, the user chooses **Structured** or **Un
 
 ## Payments
 
-- **Stripe** – Checkout session; success redirect records payment. **Mocked in tests** so the app loads without the real Stripe module.
-- **Payment types** – **Fixed price** (standard fee), **donation** (each party can add an optional extra amount), **pro-bono** (fee waived). All create a registered transaction.
-- **Per-mediation** – Price per party set by mediator in pre-mediation; payment required (or not) per mediation.
-- **Transaction registration** – Every payment (fixed, donation, pro-bono) is stored in `MediationPayment` with amount, **platform commission**, and **mediator payout**.
-- **Platform commission** – Configurable percentage (backoffice, superadmin). Applied to each paid mediation; the remainder is the mediator’s payout.
-- **Mediator payout** – Mediators configure **IBAN** and/or **mobile number** in **Payout settings** (dashboard → Payout settings) to receive payments. All transactions for mediations they mediate are listed there with commission and payout breakdown.
+- **Stripe** – Checkout sessions for **mediator subscriptions** (Professional / Enterprise) and **bulk packs of mediations**. Success redirect records the transaction. **Mocked in tests** so the app loads without the real Stripe module.
+- **Pricing model** – The platform does **not charge commission** on payments between mediators and parties. Instead, mediators pay:
+  - **Subscriptions** (monthly plans) for higher mediation capacity; and/or
+  - **Bulk packs of mediations** (one-off purchases that add to their usable mediation balance).
+- **Per-mediation tracking** – Mediators can optionally record what they agreed with parties and mark payments as “received” in **Payout settings**; this is for **control only** (the platform does not execute these payments).
+- **Transaction registration** – Every subscription or bulk pack the mediator buys from the platform is stored in `MediationPayment` with amount and metadata for billing and metrics.
+- **Mediator payout view** – **Payout settings** (dashboard) shows mediators:
+  - Stripe-powered transactions they made with the platform (subscriptions/packs), and
+  - Optional manual records of payments received from parties.
 
 ---
 

@@ -15,11 +15,17 @@ def _legal_path(filename):
 
 
 def _apply_company_placeholders(text: str) -> str:
-    """Replace {{COMPANY_*}} placeholders with values from settings."""
+    """Replace {{COMPANY_*}} and {{APP_NAME}} placeholders with values from settings/config."""
     from services.settings_service import get_company_placeholders
+
     out = text
+    # Company identity placeholders
     for placeholder, value in get_company_placeholders().items():
         out = out.replace(placeholder, value)
+
+    # App name placeholder for legal docs (terms, privacy)
+    app_name = current_app.config.get("APP_NAME", "BridgeSpace")
+    out = out.replace("{{APP_NAME}}", app_name)
     return out
 
 

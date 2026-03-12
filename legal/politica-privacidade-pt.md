@@ -1,4 +1,4 @@
-# Política de Privacidade – Plataforma BridgeSpace
+# Política de Privacidade – Plataforma {{APP_NAME}}
 
 *Documento em língua portuguesa. Em caso de tradução para outro idioma, a versão portuguesa prevalece.*
 
@@ -6,7 +6,7 @@
 
 ## 1. Responsável pelo tratamento
 
-**1.1.** O responsável pelo tratamento dos dados pessoais tratados através da plataforma BridgeSpace (“Plataforma”) é:
+**1.1.** O responsável pelo tratamento dos dados pessoais tratados através da plataforma {{APP_NAME}} (“Plataforma”) é:
 
 | | |
 |---|---|

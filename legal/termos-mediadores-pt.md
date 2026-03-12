@@ -1,8 +1,8 @@
-# Termos de Utilização da Plataforma BridgeSpace
+# Termos de Utilização da Plataforma {{APP_NAME}}
 
 *Documento em língua portuguesa. Em caso de tradução para outro idioma, a versão portuguesa prevalece.*
 
-Os presentes termos regulam a utilização da plataforma de mediação online BridgeSpace (“Plataforma”) por **todos os utilizadores** (incluindo utilizadores registados e mediadores). As secções específicas para **mediadores** encontram-se na Parte II.
+Os presentes termos regulam a utilização da plataforma de mediação online {{APP_NAME}} (“Plataforma”) por **todos os utilizadores** (incluindo utilizadores registados e mediadores). As secções específicas para **mediadores** encontram-se na Parte II.
 
 ---
 
